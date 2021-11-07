@@ -11,17 +11,29 @@ chooses the repository based on the current branch.
 
 ## Setup
 
+**settings.gradle.kts**
+
+```kotlin
+pluginManagement {
+    repositories {
+        maven("https://eldonexus.de/repository/maven-public/")
+    }
+}
+```
+
+**build.gradle.kts**
+
 ```kotlin
 plugins {
     id("de.chojo.publishdata") version "version"
 }
 
 publishData {
-    // only if you want to publish to the eldonexus
+    // only if you want to publish to the eldonexus. If you call this you will not need to manually add repositories
     useEldoNexusRepos()
     // manually register a release repo
     addRepo(Repo(Regex("master"), "", "https://my-repo.com/releases", false))
-    // manually register a snapshot repo which will appen -SNAPSHOT+<commit_hash>
+    // manually register a snapshot repo which will append -SNAPSHOT+<commit_hash>
     addRepo(Repo(Regex(".*"), "-SNAPSHOT", "https://my-repo.com/snapshots", true))
     // Add tasks which should be published
     publishTask("jar")
@@ -31,6 +43,7 @@ publishData {
 
 publishing {
     publications.create<MavenPublication>("maven") {
+        // configure the publication as defined previously.
         publishData.configurePublication(this)
     }
 
@@ -42,6 +55,7 @@ publishing {
             }
 
             name = "MyRepo"
+            // Get the detected repository from the publish data
             url = uri(publishData.getRepository())
         }
     }
