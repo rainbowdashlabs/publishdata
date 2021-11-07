@@ -35,7 +35,7 @@ class Repo(val identifier: Regex, val marker: String, val url: String, private v
         }
 
         fun main(append: String, repo: String, addCommit: Boolean): Repo {
-            return master("main", repo, addCommit)
+            return Repo(Regex("main"), append, repo, addCommit)
         }
 
         fun dev(append: String, repo: String, addCommit: Boolean): Repo {

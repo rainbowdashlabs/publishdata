@@ -5,15 +5,16 @@ plugins {
 }
 
 group = "de.chojo"
-version = "1.0.0"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
 }
 
-java{
+java {
     withSourcesJar()
     withJavadocJar()
+    sourceCompatibility = JavaVersion.VERSION_1_8
 }
 
 dependencies {
@@ -23,7 +24,7 @@ dependencies {
 
 gradlePlugin {
     plugins {
-        create("publishData"){
+        create("publishData") {
             id = "de.chojo.publishdata"
             implementationClass = "de.chojo.PublishData"
         }
@@ -50,8 +51,8 @@ publishing {
     }
 }
 
-tasks{
-    processResources{
+tasks {
+    processResources {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
 }
