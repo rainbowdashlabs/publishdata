@@ -18,7 +18,5 @@ jobs:
           java-version: 16
       - name: Build with Gradle
         run: ./gradlew --build-cache build
-      - name: Check licence
-        run: ./gradlew licenseCheck
       - name: Test with Gradle
         run: ./gradlew test
