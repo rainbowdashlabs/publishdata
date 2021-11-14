@@ -6,7 +6,6 @@ import org.gradle.api.publish.maven.MavenPublication
 
 open class PublishDataExtension(private val project: Project) {
     var versionCleaner: Regex = Regex("-SNAPSHOT|-DEV")
-
     var hashLength: Int = 7
     var repos: MutableSet<Repo> = mutableSetOf()
     var components: MutableSet<String> = mutableSetOf()
@@ -26,8 +25,8 @@ open class PublishDataExtension(private val project: Project) {
      */
     fun useEldoNexusRepos() {
         addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
-        addRepo(Repo.dev("-DEV", "https://eldonexus.de/repository/maven-dev/", true))
-        addRepo(Repo.snapshot("-SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
+        addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
+        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
     }
 
     /**
@@ -107,12 +106,9 @@ open class PublishDataExtension(private val project: Project) {
     fun getRepository(): String = getReleaseType()?.url ?: ""
 
     private fun determineLocalCommitHash(): String {
-        if (!(System.getenv("PUBLIC_BUILD") ?: "false").contentEquals("true")) {
-            return "undefined"
-        }
-        val localBranch = determineLocalBranch()
-        val hash =
-            project.rootProject.file(".git/refs/heads/${localBranch}").useLines { it.firstOrNull() }
+        val localBranch = determineLocalBranchInternal()
+        println("Building on branch $localBranch")
+        val hash = project.rootProject.file(".git/refs/heads/${localBranch}").useLines { it.firstOrNull() }
         return hash ?: "undefined"
     }
 
@@ -123,13 +119,19 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     private fun determineLocalBranch(): String {
-        if (!(System.getenv("PUBLIC_BUILD") ?: "false").contentEquals("true")) {
+        if (!isPublicBuild()) {
+            println("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
             return "local"
         }
+        return determineLocalBranchInternal();
+    }
+
+    private fun determineLocalBranchInternal(): String {
         val branch = project.rootProject.file(".git/HEAD").useLines { it.firstOrNull() }
         return branch?.replace("ref: refs/heads/", "") ?: "local"
     }
 
-    init {
+    private fun isPublicBuild(): Boolean {
+        return (System.getenv("PUBLIC_BUILD") ?: "false").contentEquals("true");
     }
 }
