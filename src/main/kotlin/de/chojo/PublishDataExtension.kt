@@ -74,8 +74,8 @@ open class PublishDataExtension(private val project: Project) {
             publication.artifact(project.tasks.getByName(task))
         }
         publication.version = getVersion();
-        publication.artifactId = project.rootProject.name.lowercase()
-        publication.groupId = project.rootProject.group as String?
+        publication.artifactId = project.name.lowercase()
+        publication.groupId = (project.rootProject.group?: project.group) as String?
     }
 
     private fun getGithubCommitHash(): String? =
