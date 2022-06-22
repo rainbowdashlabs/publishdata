@@ -4,16 +4,20 @@ import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.publish.maven.MavenPublication
 
+@Suppress("MemberVisibilityCanBePrivate", "unused")
 open class PublishDataExtension(private val project: Project) {
     var versionCleaner: Regex = Regex("-SNAPSHOT|-DEV")
     var hashLength: Int = 7
     var repos: MutableSet<Repo> = mutableSetOf()
     var components: MutableSet<String> = mutableSetOf()
     var tasks: MutableSet<String> = mutableSetOf()
-    var repo: Repo? = null;
+    var repo: Repo? = null
 
     /**
      * Registers a repository.
+     *
+     * Order matters. The first registered repository has highest priority.
+     * The first repo which matches will be the one to be used.
      */
     fun addRepo(repo: Repo) {
         println("Registered repository ${repo.url} with identifier \"${repo.marker}\" matching \"${repo.identifier}\"")
@@ -23,8 +27,12 @@ open class PublishDataExtension(private val project: Project) {
     /**
      * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.dev] and [Repo.snapshot]
      */
-    fun useEldoNexusRepos() {
-        addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
+    fun useEldoNexusRepos(useMain: Boolean = false) {
+        if (useMain) {
+            addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
+        } else {
+            addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
+        }
         addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
         addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
     }
@@ -54,12 +62,12 @@ open class PublishDataExtension(private val project: Project) {
 
     private fun getReleaseType(): Repo? {
         if (repo != null) {
-            return repo;
+            return repo
         }
         val branch = getBranch()
         val first = repos.firstOrNull { r -> r.isRepo(branch) }
         println(if (first == null) "Could not detect release type" else "Detected release of ${first.identifier}")
-        return first;
+        return first
     }
 
     /**
@@ -73,9 +81,25 @@ open class PublishDataExtension(private val project: Project) {
         for (task in tasks) {
             publication.artifact(project.tasks.getByName(task))
         }
-        publication.version = getVersion();
-        publication.artifactId = project.name.lowercase()
-        publication.groupId = (project.rootProject.group?: project.group) as String?
+        publication.version = getVersion()
+        publication.artifactId = getProjectName()
+        publication.groupId = getGroupId()
+    }
+
+    private fun getGroupId(): String {
+        var version = (project.group as String)
+        if (version.isBlank()) {
+            version = (project.rootProject.group as String)
+        }
+        return version
+    }
+
+    private fun getProjectName(): String {
+        var version = (project.name as String)
+        if (version.isBlank()) {
+            version = (project.rootProject.name as String)
+        }
+        return version.lowercase()
     }
 
     private fun getGithubCommitHash(): String? =
@@ -97,8 +121,13 @@ open class PublishDataExtension(private val project: Project) {
         return getReleaseType()?.append(getVersionString(), getCommitHash(), appendCommit) ?: "undefined"
     }
 
-    private fun getVersionString(): String =
-        (project.version as String).replace(versionCleaner, "")
+    private fun getVersionString(): String {
+        var version = (project.version as String).replace(versionCleaner, "")
+        if (version.isBlank()) {
+            version = (project.rootProject.version as String).replace(versionCleaner, "")
+        }
+        return version
+    }
 
     /**
      * Get the [Repo.url]
@@ -123,7 +152,7 @@ open class PublishDataExtension(private val project: Project) {
             println("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
             return "local"
         }
-        return determineLocalBranchInternal();
+        return determineLocalBranchInternal()
     }
 
     private fun determineLocalBranchInternal(): String {
@@ -132,6 +161,6 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     private fun isPublicBuild(): Boolean {
-        return (System.getenv("PUBLIC_BUILD") ?: "false").contentEquals("true");
+        return (System.getenv("PUBLIC_BUILD") ?: "false").contentEquals("true")
     }
 }
