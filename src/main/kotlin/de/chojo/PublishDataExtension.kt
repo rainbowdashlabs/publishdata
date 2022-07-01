@@ -105,7 +105,10 @@ open class PublishDataExtension(private val project: Project) {
     private fun getGithubCommitHash(): String? =
         System.getenv("GITHUB_SHA")?.substring(0, hashLength)
 
-    private fun getCommitHash(): String {
+    /**
+     * Get the commit hash.
+     */
+    fun getCommitHash(): String {
         return getGithubCommitHash() ?: determineLocalCommitHash()
     }
 
@@ -141,7 +144,10 @@ open class PublishDataExtension(private val project: Project) {
         return hash?.substring(0, hashLength) ?: "undefined"
     }
 
-    private fun getBranch(): String = getGithubBranch() ?: determineLocalBranch()
+    /**
+     * Get the current branch which is determined by github or the local git repository
+     */
+    fun getBranch(): String = getGithubBranch() ?: determineLocalBranch()
 
     private fun getGithubBranch(): String? {
         return System.getenv("GITHUB_REF")?.replace("refs/heads/", "")
@@ -160,7 +166,10 @@ open class PublishDataExtension(private val project: Project) {
         return branch?.replace("ref: refs/heads/", "") ?: "local"
     }
 
-    private fun isPublicBuild(): Boolean {
+    /**
+     * Check if the build is a public build.
+     */
+    fun isPublicBuild(): Boolean {
         return (System.getenv("PUBLIC_BUILD") ?: "false").contentEquals("true")
     }
 }
