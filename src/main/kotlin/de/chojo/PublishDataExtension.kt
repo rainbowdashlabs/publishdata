@@ -125,11 +125,11 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     private fun getVersionString(): String {
-        var version = (project.version as String).replace(versionCleaner, "")
-        if (version.isBlank()) {
-            version = (project.rootProject.version as String).replace(versionCleaner, "")
+        var version = project.version as String
+        if (version.isBlank() || version == "unspecified") {
+            version = (project.rootProject.version as String)
         }
-        return version
+        return version.replace(versionCleaner, "")
     }
 
     /**
