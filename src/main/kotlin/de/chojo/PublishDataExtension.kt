@@ -87,9 +87,9 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     private fun getGroupId(): String {
-        var version = (project.group as String)
+        var version = (project.rootProject.group as String)
         if (version.isBlank()) {
-            version = (project.rootProject.group as String)
+            version = (project.group as String)
         }
         return version
     }
