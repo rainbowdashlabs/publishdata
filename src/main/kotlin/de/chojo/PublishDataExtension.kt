@@ -16,7 +16,7 @@ open class PublishDataExtension(private val project: Project) {
     /**
      * Registers a repository.
      *
-     * Order matters. The first registered repository has highest priority.
+     * Order matters. The first registered repository has the highest priority.
      * The first repo which matches will be the one to be used.
      */
     fun addRepo(repo: Repo) {
@@ -140,12 +140,13 @@ open class PublishDataExtension(private val project: Project) {
     private fun determineLocalCommitHash(): String {
         val localBranch = determineLocalBranchInternal()
         println("Building on branch $localBranch")
+        if(localBranch == null) return "none"
         val hash = project.rootProject.file(".git/refs/heads/${localBranch}").useLines { it.firstOrNull() }
         return hash?.substring(0, hashLength) ?: "undefined"
     }
 
     /**
-     * Get the current branch which is determined by github or the local git repository
+     * Get the current branch which is determined by GitHub or the local git repository
      */
     fun getBranch(): String = getGithubBranch() ?: determineLocalBranch()
 
@@ -158,11 +159,13 @@ open class PublishDataExtension(private val project: Project) {
             println("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
             return "local"
         }
-        return determineLocalBranchInternal()
+        return determineLocalBranchInternal()?: "none"
     }
 
-    private fun determineLocalBranchInternal(): String {
-        val branch = project.rootProject.file(".git/HEAD").useLines { it.firstOrNull() }
+    private fun determineLocalBranchInternal(): String? {
+        val file = project.rootProject.file(".git/HEAD")
+        if(!file.exists()) return null
+        val branch = file.useLines { it.firstOrNull() }
         return branch?.replace("ref: refs/heads/", "") ?: "local"
     }
 
