@@ -1,5 +1,6 @@
 plugins {
-    kotlin("jvm") version "1.5.31"
+    //kotlin("jvm") version "1.5.31"
+    `kotlin-dsl`
     `maven-publish`
     `java-gradle-plugin`
 }
@@ -8,6 +9,7 @@ group = "de.chojo"
 version = "1.0.9"
 
 repositories {
+    gradlePluginPortal()
     mavenCentral()
 }
 
@@ -19,7 +21,6 @@ java {
 
 dependencies {
     compileOnly(gradleApi())
-    implementation(kotlin("stdlib"))
 }
 
 gradlePlugin {

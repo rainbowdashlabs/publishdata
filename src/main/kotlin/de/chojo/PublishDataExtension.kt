@@ -64,7 +64,7 @@ open class PublishDataExtension(private val project: Project) {
         if (repo != null) {
             return repo
         }
-        val branch = getBranch()
+        val branch = Git.getBranch(project)
         val first = repos.firstOrNull { r -> r.isRepo(branch) }
         println(if (first == null) "Could not detect release type" else "Detected release of ${first.identifier}")
         return first
@@ -102,15 +102,6 @@ open class PublishDataExtension(private val project: Project) {
         return version.lowercase()
     }
 
-    private fun getGithubCommitHash(): String? =
-        System.getenv("GITHUB_SHA")?.substring(0, hashLength)
-
-    /**
-     * Get the commit hash.
-     */
-    fun getCommitHash(): String {
-        return getGithubCommitHash() ?: determineLocalCommitHash()
-    }
 
     /**
      * Get the version with the optional [Repo.marker] without the commit hash
@@ -121,7 +112,7 @@ open class PublishDataExtension(private val project: Project) {
      * Get the version with the optional [Repo.marker]. Will append the commit hash when [Repo.addCommit] and [appendCommit] is set to true
      */
     fun getVersion(appendCommit: Boolean): String {
-        return getReleaseType()?.append(getVersionString(), getCommitHash(), appendCommit) ?: "undefined"
+        return getReleaseType()?.append(getVersionString(), Git.getCommitHash(project, hashLength), appendCommit) ?: "undefined"
     }
 
     private fun getVersionString(): String {
@@ -137,42 +128,4 @@ open class PublishDataExtension(private val project: Project) {
      */
     fun getRepository(): String = getReleaseType()?.url ?: ""
 
-    private fun determineLocalCommitHash(): String {
-        val localBranch = determineLocalBranchInternal()
-        println("Building on branch $localBranch")
-        if(localBranch == null) return "none"
-        val hash = project.rootProject.file(".git/refs/heads/${localBranch}").useLines { it.firstOrNull() }
-        return hash?.substring(0, hashLength) ?: "undefined"
-    }
-
-    /**
-     * Get the current branch which is determined by GitHub or the local git repository
-     */
-    fun getBranch(): String = getGithubBranch() ?: determineLocalBranch()
-
-    private fun getGithubBranch(): String? {
-        return System.getenv("GITHUB_REF")?.replace("refs/heads/", "")
-    }
-
-    private fun determineLocalBranch(): String {
-        if (!isPublicBuild()) {
-            println("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
-            return "local"
-        }
-        return determineLocalBranchInternal()?: "none"
-    }
-
-    private fun determineLocalBranchInternal(): String? {
-        val file = project.rootProject.file(".git/HEAD")
-        if(!file.exists()) return null
-        val branch = file.useLines { it.firstOrNull() }
-        return branch?.replace("ref: refs/heads/", "") ?: "local"
-    }
-
-    /**
-     * Check if the build is a public build.
-     */
-    fun isPublicBuild(): Boolean {
-        return (System.getenv("PUBLIC_BUILD") ?: "false").contentEquals("true")
-    }
 }
