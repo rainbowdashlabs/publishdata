@@ -9,7 +9,6 @@ open class PublishDataExtension(private val project: Project) {
     var versionCleaner: Regex = Regex("-SNAPSHOT|-DEV")
     var hashLength: Int = 7
     var repos: MutableSet<Repo> = mutableSetOf()
-    var internalRepos: MutableSet<Repo> = mutableSetOf()
     var components: MutableSet<String> = mutableSetOf()
     var tasks: MutableSet<String> = mutableSetOf()
     var repo: Repo? = null
@@ -23,17 +22,6 @@ open class PublishDataExtension(private val project: Project) {
     fun addRepo(repo: Repo) {
         println("Registered repository ${repo.url} with identifier \"${repo.marker}\" matching \"${repo.identifier}\"")
         repos.add(repo)
-    }
-
-    /**
-     * Registers a repository.
-     *
-     * Order matters. The first registered repository has the highest priority.
-     * The first repo which matches will be the one to be used.
-     */
-    fun addInternalRepo(repo: Repo) {
-        println("Registered internal repository ${repo.url} with identifier \"${repo.marker}\" matching \"${repo.identifier}\"")
-        internalRepos.add(repo)
     }
 
     /**
@@ -55,13 +43,23 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
-     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.dev] and [Repo.snapshot]
+     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
     fun useEldoNexusRepos() {
         addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
         addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
         addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
         addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
+    }
+
+    /**
+     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
+     */
+    fun useInternalEldoNexusRepos() {
+        addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases-internal/", false))
+        addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases-internal/", false))
+        addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev-internal/", true))
+        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots-internal/", true))
     }
 
     /**
@@ -92,11 +90,7 @@ open class PublishDataExtension(private val project: Project) {
             return repo
         }
         val branch = getBranch()
-        val internal = (System.getenv("INTERNAL") ?: "false") == "true"
-        if (internal) {
-            println("Detected internal release.")
-        }
-        val first = (if (internal) internalRepos else repos).firstOrNull { r -> r.isRepo(branch) }
+        val first = repos.firstOrNull { r -> r.isRepo(branch) }
         println(if (first == null) "Could not detect release type" else "Detected release of ${first.identifier}")
         return first
     }
