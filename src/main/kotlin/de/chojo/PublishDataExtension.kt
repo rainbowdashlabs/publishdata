@@ -27,7 +27,12 @@ open class PublishDataExtension(private val project: Project) {
     /**
      * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.dev] and [Repo.snapshot]
      */
-    fun useEldoNexusRepos(useMain: Boolean = false) {
+    @Deprecated(
+        message = "Main and master co exist",
+        level = DeprecationLevel.ERROR,
+        replaceWith = ReplaceWith("useEldoNexusRepos")
+    )
+    fun useEldoNexusRepos(useMain: Boolean) {
         if (useMain) {
             addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
         } else {
@@ -35,6 +40,26 @@ open class PublishDataExtension(private val project: Project) {
         }
         addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
         addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
+    }
+
+    /**
+     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
+     */
+    fun useEldoNexusRepos() {
+        addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
+        addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
+        addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
+        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
+    }
+
+    /**
+     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
+     */
+    fun useInternalEldoNexusRepos() {
+        addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases-internal/", false))
+        addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases-internal/", false))
+        addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev-internal/", true))
+        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots-internal/", true))
     }
 
     /**
@@ -140,8 +165,10 @@ open class PublishDataExtension(private val project: Project) {
     private fun determineLocalCommitHash(): String {
         val localBranch = determineLocalBranchInternal()
         println("Building on branch $localBranch")
-        if(localBranch == null) return "none"
-        val hash = project.rootProject.file(".git/refs/heads/${localBranch}").useLines { it.firstOrNull() }
+        if (localBranch == null) return "none"
+        val file = project.rootProject.file(".git/refs/heads/${localBranch}")
+        if (!file.exists()) return "undefined"
+        val hash = file.useLines { it.firstOrNull() }
         return hash?.substring(0, hashLength) ?: "undefined"
     }
 
@@ -159,12 +186,12 @@ open class PublishDataExtension(private val project: Project) {
             println("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
             return "local"
         }
-        return determineLocalBranchInternal()?: "none"
+        return determineLocalBranchInternal() ?: "none"
     }
 
     private fun determineLocalBranchInternal(): String? {
         val file = project.rootProject.file(".git/HEAD")
-        if(!file.exists()) return null
+        if (!file.exists()) return null
         val branch = file.useLines { it.firstOrNull() }
         return branch?.replace("ref: refs/heads/", "") ?: "local"
     }

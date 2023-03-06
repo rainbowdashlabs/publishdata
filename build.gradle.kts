@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "de.chojo"
-version = "1.0.9"
+version = "1.1.0"
 
 repositories {
     mavenCentral()
@@ -42,7 +42,10 @@ publishing {
                 }
             }
 
-            val isSnap = version.toString().endsWith("SNAPSHOT")
+            val branch = System.getenv("GITHUB_REF")?.replace("refs/heads/", "")?: ""
+
+            val isSnap = !(branch == "main" || branch == "master")
+
             val releasesRepoUrl = "https://eldonexus.de/repository/maven-releases/"
             val snapshotsRepoUrl = "https://eldonexus.de/repository/maven-snapshots/"
             url = uri(if (isSnap) snapshotsRepoUrl else releasesRepoUrl)
