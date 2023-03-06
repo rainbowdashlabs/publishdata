@@ -172,7 +172,9 @@ open class PublishDataExtension(private val project: Project) {
         val localBranch = determineLocalBranchInternal()
         println("Building on branch $localBranch")
         if (localBranch == null) return "none"
-        val hash = project.rootProject.file(".git/refs/heads/${localBranch}").useLines { it.firstOrNull() }
+        val file = project.rootProject.file(".git/refs/heads/${localBranch}")
+        if (!file.exists()) return "undefined"
+        val hash = file.useLines { it.firstOrNull() }
         return hash?.substring(0, hashLength) ?: "undefined"
     }
 
