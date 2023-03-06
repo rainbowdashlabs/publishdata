@@ -9,6 +9,7 @@ open class PublishDataExtension(private val project: Project) {
     var versionCleaner: Regex = Regex("-SNAPSHOT|-DEV")
     var hashLength: Int = 7
     var repos: MutableSet<Repo> = mutableSetOf()
+    var internalRepos: MutableSet<Repo> = mutableSetOf()
     var components: MutableSet<String> = mutableSetOf()
     var tasks: MutableSet<String> = mutableSetOf()
     var repo: Repo? = null
@@ -25,14 +26,40 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
+     * Registers a repository.
+     *
+     * Order matters. The first registered repository has the highest priority.
+     * The first repo which matches will be the one to be used.
+     */
+    fun addInternalRepo(repo: Repo) {
+        println("Registered internal repository ${repo.url} with identifier \"${repo.marker}\" matching \"${repo.identifier}\"")
+        internalRepos.add(repo)
+    }
+
+    /**
      * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.dev] and [Repo.snapshot]
      */
-    fun useEldoNexusRepos(useMain: Boolean = false) {
+    @Deprecated(
+        message = "Main and master co exist",
+        level = DeprecationLevel.ERROR,
+        replaceWith = ReplaceWith("useEldoNexusRepos")
+    )
+    fun useEldoNexusRepos(useMain: Boolean) {
         if (useMain) {
             addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
         } else {
             addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
         }
+        addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
+        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
+    }
+
+    /**
+     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.dev] and [Repo.snapshot]
+     */
+    fun useEldoNexusRepos() {
+        addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
+        addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
         addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
         addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
     }
@@ -65,7 +92,11 @@ open class PublishDataExtension(private val project: Project) {
             return repo
         }
         val branch = getBranch()
-        val first = repos.firstOrNull { r -> r.isRepo(branch) }
+        val internal = (System.getenv("INTERNAL") ?: "false") == "true"
+        if (internal) {
+            println("Detected internal release.")
+        }
+        val first = (if (internal) internalRepos else repos).firstOrNull { r -> r.isRepo(branch) }
         println(if (first == null) "Could not detect release type" else "Detected release of ${first.identifier}")
         return first
     }
@@ -140,7 +171,7 @@ open class PublishDataExtension(private val project: Project) {
     private fun determineLocalCommitHash(): String {
         val localBranch = determineLocalBranchInternal()
         println("Building on branch $localBranch")
-        if(localBranch == null) return "none"
+        if (localBranch == null) return "none"
         val hash = project.rootProject.file(".git/refs/heads/${localBranch}").useLines { it.firstOrNull() }
         return hash?.substring(0, hashLength) ?: "undefined"
     }
@@ -159,12 +190,12 @@ open class PublishDataExtension(private val project: Project) {
             println("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
             return "local"
         }
-        return determineLocalBranchInternal()?: "none"
+        return determineLocalBranchInternal() ?: "none"
     }
 
     private fun determineLocalBranchInternal(): String? {
         val file = project.rootProject.file(".git/HEAD")
-        if(!file.exists()) return null
+        if (!file.exists()) return null
         val branch = file.useLines { it.firstOrNull() }
         return branch?.replace("ref: refs/heads/", "") ?: "local"
     }
