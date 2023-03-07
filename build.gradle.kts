@@ -12,9 +12,24 @@ repositories {
 }
 
 java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(8))
+    }
+}
+
+java {
     withSourcesJar()
     withJavadocJar()
-    sourceCompatibility = JavaVersion.VERSION_1_8
+}
+
+kotlin {
+    target {
+        target {
+            target {
+
+            }
+        }
+    }
 }
 
 dependencies {
@@ -42,7 +57,7 @@ publishing {
                 }
             }
 
-            val branch = System.getenv("GITHUB_REF")?.replace("refs/heads/", "")?: ""
+            val branch = System.getenv("GITHUB_REF")?.replace("refs/heads/", "") ?: ""
 
             val isSnap = !(branch == "main" || branch == "master")
 
