@@ -22,16 +22,6 @@ java {
     withJavadocJar()
 }
 
-kotlin {
-    target {
-        target {
-            target {
-
-            }
-        }
-    }
-}
-
 dependencies {
     compileOnly(gradleApi())
     implementation(kotlin("stdlib"))
