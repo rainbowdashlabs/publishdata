@@ -12,6 +12,7 @@ open class PublishDataExtension(private val project: Project) {
     var components: MutableSet<String> = mutableSetOf()
     var tasks: MutableSet<String> = mutableSetOf()
     var repo: Repo? = null
+    var addBuildData = false
 
     /**
      * Registers a repository.
@@ -22,6 +23,14 @@ open class PublishDataExtension(private val project: Project) {
     fun addRepo(repo: Repo) {
         println("Registered repository ${repo.url} with identifier \"${repo.marker}\" matching \"${repo.identifier}\"")
         repos.add(repo)
+    }
+
+    fun addBuildData() {
+        addBuildData = true
+    }
+
+    fun isBuildDataActive(): Boolean {
+        return addBuildData
     }
 
     /**
@@ -195,7 +204,7 @@ open class PublishDataExtension(private val project: Project) {
                 "PATREON"
             }
 
-            isPublicBuild() || getGithubBranch() != null-> {
+            isPublicBuild() || getGithubBranch() != null -> {
                 "PUBLIC"
             }
 
