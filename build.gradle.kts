@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "1.8.10"
     `maven-publish`
+    `kotlin-dsl`
     `java-gradle-plugin`
 }
 
@@ -9,11 +10,12 @@ version = "1.1.0"
 
 repositories {
     mavenCentral()
+    gradlePluginPortal()
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(JavaLanguageVersion.of(11))
     }
 }
 
