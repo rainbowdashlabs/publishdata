@@ -25,24 +25,6 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
-     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.dev] and [Repo.snapshot]
-     */
-    @Deprecated(
-        message = "Main and master co exist",
-        level = DeprecationLevel.ERROR,
-        replaceWith = ReplaceWith("useEldoNexusRepos")
-    )
-    fun useEldoNexusRepos(useMain: Boolean) {
-        if (useMain) {
-            addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
-        } else {
-            addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
-        }
-        addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
-        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
-    }
-
-    /**
      * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
     fun useEldoNexusRepos() {
@@ -53,7 +35,7 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
-     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
+     * Configures the repositories to use the internal eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
     fun useInternalEldoNexusRepos() {
         addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases-internal/", false))
@@ -201,5 +183,23 @@ open class PublishDataExtension(private val project: Project) {
      */
     fun isPublicBuild(): Boolean {
         return (System.getenv("PUBLIC_BUILD") ?: "false").contentEquals("true")
+    }
+
+    fun getBuildType(): String {
+        return when {
+            System.getenv("BUILD_TYPE") != null -> {
+                return System.getenv("BUILD_TYPE")
+            }
+
+            System.getenv("PATREON")?.equals("true", true) == true -> {
+                "PATREON"
+            }
+
+            isPublicBuild() || getGithubBranch() != null-> {
+                "PUBLIC"
+            }
+
+            else -> "LOCAL"
+        }
     }
 }

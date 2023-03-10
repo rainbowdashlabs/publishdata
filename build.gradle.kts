@@ -1,20 +1,27 @@
 plugins {
-    kotlin("jvm") version "1.5.31"
+    kotlin("jvm") version "1.8.10"
     `maven-publish`
+    `kotlin-dsl`
     `java-gradle-plugin`
 }
 
 group = "de.chojo"
-version = "1.1.0"
+version = "1.2.0"
 
 repositories {
     mavenCentral()
+    gradlePluginPortal()
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(11))
+    }
 }
 
 java {
     withSourcesJar()
     withJavadocJar()
-    sourceCompatibility = JavaVersion.VERSION_1_8
 }
 
 dependencies {
@@ -42,13 +49,19 @@ publishing {
                 }
             }
 
-            val branch = System.getenv("GITHUB_REF")?.replace("refs/heads/", "")?: ""
+            val branch = System.getenv("GITHUB_REF")?.replace("refs/heads/", "") ?: ""
 
-            val isSnap = !(branch == "main" || branch == "master")
+            url = uri(when (branch) {
+                "main", "master" -> "https://eldonexus.de/repository/maven-releases/"
+                "dev" -> "https://eldonexus.de/repository/maven-dev/"
+                else -> "https://eldonexus.de/repository/maven-snapshots/"
+            })
 
-            val releasesRepoUrl = "https://eldonexus.de/repository/maven-releases/"
-            val snapshotsRepoUrl = "https://eldonexus.de/repository/maven-snapshots/"
-            url = uri(if (isSnap) snapshotsRepoUrl else releasesRepoUrl)
+            version = when (branch) {
+                "main", "master" -> version
+                "dev" -> version.toString().plus("-DEV")
+                else -> version.toString().plus("-SNAPSHOT")
+            }
             name = "EldoNexus"
         }
     }
