@@ -24,6 +24,7 @@ class PublishData : Plugin<Project> {
                 commit.set(extension.getCommitHash())
                 artifactVersion.set(extension.getVersion(false))
                 active.set(extension.isBuildDataActive())
+                additionalData.set(extension.additionalData)
             }
 
             plugins.withType<JavaPlugin> {

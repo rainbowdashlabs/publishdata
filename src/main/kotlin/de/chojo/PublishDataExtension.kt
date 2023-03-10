@@ -3,16 +3,20 @@ package de.chojo
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Optional
 
 @Suppress("MemberVisibilityCanBePrivate", "unused")
 open class PublishDataExtension(private val project: Project) {
     var versionCleaner: Regex = Regex("-SNAPSHOT|-DEV")
+    @Input @Optional
     var hashLength: Int = 7
     var repos: MutableSet<Repo> = mutableSetOf()
     var components: MutableSet<String> = mutableSetOf()
     var tasks: MutableSet<String> = mutableSetOf()
     var repo: Repo? = null
     var addBuildData = false
+    var additionalData: Map<String, String> = emptyMap()
 
     /**
      * Registers a repository.
@@ -25,8 +29,9 @@ open class PublishDataExtension(private val project: Project) {
         repos.add(repo)
     }
 
-    fun addBuildData() {
+    fun addBuildData(additionalData: Map<String, String> = emptyMap()) {
         addBuildData = true
+        this.additionalData = additionalData
     }
 
     fun isBuildDataActive(): Boolean {
@@ -103,19 +108,19 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     private fun getGroupId(): String {
-        var version = (project.rootProject.group as String)
-        if (version.isBlank()) {
-            version = (project.group as String)
+        var groupId = (project.rootProject.group as String)
+        if (groupId.isBlank()) {
+            groupId = (project.group as String)
         }
-        return version
+        return groupId
     }
 
     private fun getProjectName(): String {
-        var version = (project.name as String)
-        if (version.isBlank()) {
-            version = (project.rootProject.name as String)
+        var name = (project.name as String)
+        if (name.isBlank()) {
+            name = (project.rootProject.name as String)
         }
-        return version.lowercase()
+        return name.lowercase()
     }
 
     private fun getGithubCommitHash(): String? =
