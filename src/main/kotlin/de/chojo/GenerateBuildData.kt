@@ -15,7 +15,13 @@ abstract class GenerateBuildData : DefaultTask() {
     abstract val outputDirectory: DirectoryProperty
 
     @get:Input
-    abstract val publishDataExtension: Property<PublishDataExtension>
+    abstract val type: Property<String>
+    @get:Input
+    abstract val branch: Property<String>
+    @get:Input
+    abstract val commit: Property<String>
+    @get:Input
+    abstract val artifactVersion: Property<String>
 
     @TaskAction
     fun generate() {
@@ -24,10 +30,10 @@ abstract class GenerateBuildData : DefaultTask() {
         var data = """
             time=${DateTimeFormatter.ISO_INSTANT.format(Instant.now())}
             unix=${Instant.now().epochSecond}
-            type=${publishDataExtension.get().getBuildType()}
-            branch=${publishDataExtension.get().getBranch()}
-            commit=${publishDataExtension.get().getCommitHash()}
-            artifactVersion=${publishDataExtension.get().getVersion(false)}
+            type=${type.get()}
+            branch=${branch.get()}
+            commit=${commit.get()}
+            artifactVersion=${artifactVersion.get()}
         """.trimIndent()
         Files.writeString(file.toPath(), data)
     }

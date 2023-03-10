@@ -19,7 +19,10 @@ class PublishData : Plugin<Project> {
 
             val generateTask = tasks.register<GenerateBuildData>("generateBuildData") {
                 outputDirectory.set(generated)
-                publishDataExtension.set(extension)
+                type.set(extension.getBuildType())
+                branch.set(extension.getBranch())
+                commit.set(extension.getCommitHash())
+                artifactVersion.set(extension.getVersion(false))
             }
 
             plugins.withType<JavaPlugin> {
