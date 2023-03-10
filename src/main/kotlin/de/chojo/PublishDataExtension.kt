@@ -115,7 +115,7 @@ open class PublishDataExtension(private val project: Project) {
         return groupId
     }
 
-    private fun getProjectName(): String {
+    internal fun getProjectName(): String {
         var name = (project.name as String)
         if (name.isBlank()) {
             name = (project.rootProject.name as String)

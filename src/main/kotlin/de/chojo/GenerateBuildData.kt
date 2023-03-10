@@ -2,7 +2,6 @@ package de.chojo
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
@@ -30,9 +29,13 @@ abstract class GenerateBuildData : DefaultTask() {
     abstract val artifactVersion: Property<String>
 
     @get:Input
-    abstract val active: Property<Boolean>
+    abstract val artifact: Property<String>
+
     @get:Input
-    abstract val additionalData:  MapProperty<String, String>
+    abstract val active: Property<Boolean>
+
+    @get:Input
+    abstract val additionalData: MapProperty<String, String>
 
     @TaskAction
     fun generate() {
