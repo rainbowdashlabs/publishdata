@@ -35,7 +35,7 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
-     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
+     * Configures the repositories to use the internal eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
     fun useInternalEldoNexusRepos() {
         addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases-internal/", false))
