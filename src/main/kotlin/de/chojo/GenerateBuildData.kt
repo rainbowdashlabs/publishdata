@@ -16,15 +16,24 @@ abstract class GenerateBuildData : DefaultTask() {
 
     @get:Input
     abstract val type: Property<String>
+
     @get:Input
     abstract val branch: Property<String>
+
     @get:Input
     abstract val commit: Property<String>
+
     @get:Input
     abstract val artifactVersion: Property<String>
 
+    @get:Input
+    abstract val active: Property<Boolean>
+
     @TaskAction
     fun generate() {
+
+        if (!active.get()) return
+
         val file = outputDirectory.file("build.data").get().asFile
 
         var data = """
