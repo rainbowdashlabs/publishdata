@@ -12,7 +12,7 @@ open class PublishDataExtension(private val project: Project) {
     var components: MutableSet<String> = mutableSetOf()
     var tasks: MutableSet<String> = mutableSetOf()
     var repo: Repo? = null
-    var addBuildData = true
+    var addBuildData = false
 
     /**
      * Registers a repository.
@@ -25,8 +25,8 @@ open class PublishDataExtension(private val project: Project) {
         repos.add(repo)
     }
 
-    fun disableBuildData() {
-        addBuildData = false
+    fun addBuildData() {
+        addBuildData = true
     }
 
     fun isBuildDataActive(): Boolean {
