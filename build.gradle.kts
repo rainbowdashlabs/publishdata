@@ -51,11 +51,12 @@ publishing {
 
             val branch = System.getenv("GITHUB_REF")?.replace("refs/heads/", "") ?: ""
 
-            val isSnap = !(branch == "main" || branch == "master")
-
-            val releasesRepoUrl = "https://eldonexus.de/repository/maven-releases/"
-            val snapshotsRepoUrl = "https://eldonexus.de/repository/maven-snapshots/"
-            url = uri(if (isSnap) snapshotsRepoUrl else releasesRepoUrl)
+            val repoUrl = when (branch) {
+                "main", "master" -> "https://eldonexus.de/repository/maven-releases/"
+                "dev" -> "https://eldonexus.de/repository/maven-dev/"
+                else -> "https://eldonexus.de/repository/maven-snapshots/"
+            }
+            url = uri(repoUrl)
             name = "EldoNexus"
         }
     }
