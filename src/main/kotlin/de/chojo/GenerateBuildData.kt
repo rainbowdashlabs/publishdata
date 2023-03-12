@@ -40,13 +40,14 @@ abstract class GenerateBuildData : DefaultTask() {
     @TaskAction
     fun generate() {
         if (!active.get()) return
-        val data = hashMapOf<String, Any>(
+        val data = linkedMapOf<String, Any>(
             "time" to DateTimeFormatter.ISO_INSTANT.format(Instant.now()),
             "unix" to Instant.now().epochSecond,
             "type" to type.get(),
             "branch" to branch.get(),
             "commit" to commit.get(),
             "artifactVersion" to artifactVersion.get(),
+            "artifact" to artifact.get(),
             "runtime" to Runtime.version()
         )
         additionalData.get().entries.stream().forEach { e -> data[e.key] = e.value }
