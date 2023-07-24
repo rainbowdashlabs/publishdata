@@ -8,7 +8,11 @@ package de.chojo
  * @property url the remote repository url
  * @property addCommit true when the commit hash should be appended on the version
  */
-class Repo(val identifier: Regex, val marker: String, val url: String, private val addCommit: Boolean) {
+class Repo(val identifier: Regex, val marker: String, val url: String, private val addCommit: Boolean, val type: Type) {
+
+    enum class Type {
+        STABLE, DEV, SNAPSHOT
+    }
 
     /**
      * Append the optional [marker] and [commitHash] on the version.
@@ -31,19 +35,19 @@ class Repo(val identifier: Regex, val marker: String, val url: String, private v
 
     companion object {
         fun master(append: String, repo: String, addCommit: Boolean): Repo {
-            return Repo(Regex("master"), append, repo, addCommit)
+            return Repo(Regex("master"), append, repo, addCommit, Type.STABLE)
         }
 
         fun main(append: String, repo: String, addCommit: Boolean): Repo {
-            return Repo(Regex("main"), append, repo, addCommit)
+            return Repo(Regex("main"), append, repo, addCommit, Type.STABLE)
         }
 
         fun dev(append: String, repo: String, addCommit: Boolean): Repo {
-            return Repo(Regex("(?i)^dev.*"), append, repo, addCommit)
+            return Repo(Regex("(?i)^dev.*"), append, repo, addCommit, Type.DEV)
         }
 
         fun snapshot(append: String, repo: String, addCommit: Boolean): Repo {
-            return Repo(Regex(".*"), append, repo, addCommit)
+            return Repo(Regex(".*"), append, repo, addCommit, Type.SNAPSHOT)
         }
     }
 }

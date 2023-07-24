@@ -9,8 +9,14 @@ import org.gradle.api.tasks.Optional
 @Suppress("MemberVisibilityCanBePrivate", "unused")
 open class PublishDataExtension(private val project: Project) {
     var versionCleaner: Regex = Regex("-SNAPSHOT|-DEV")
-    @Input @Optional
+
+    @Input
+    @Optional
     var hashLength: Int = 7
+
+    @Input
+    @Optional
+    var publishingVersion: String? = null
     var repos: MutableSet<Repo> = mutableSetOf()
     var components: MutableSet<String> = mutableSetOf()
     var tasks: MutableSet<String> = mutableSetOf()
@@ -41,10 +47,10 @@ open class PublishDataExtension(private val project: Project) {
     /**
      * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
-    fun useEldoNexusRepos() {
+    fun useEldoNexusRepos(dev: Boolean = true) {
         addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
         addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
-        addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
+        if (dev) addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
         addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
     }
 
@@ -146,7 +152,7 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     private fun getVersionString(): String {
-        var version = project.version as String
+        var version = publishingVersion ?: project.version as String
         if (version.isBlank() || version == "unspecified") {
             version = (project.rootProject.version as String)
         }
