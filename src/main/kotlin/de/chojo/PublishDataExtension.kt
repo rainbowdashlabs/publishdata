@@ -45,6 +45,15 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
+     * Configures the repositories to use the gitlab repositories as defined in [Repo.master], [Repo.main] and [Repo.snapshot]
+     */
+    fun useGitlabReposForProject(projectId: String, gitlabUrl: String = "https://gitlab.com/") {
+        addRepo(Repo.main("", "${gitlabUrl}api/v4/projects/$projectId/packages/maven", false))
+        addRepo(Repo.master("", "${gitlabUrl}api/v4/projects/$projectId/packages/maven", false))
+        addRepo(Repo.snapshot("SNAPSHOT", "${gitlabUrl}api/v4/projects/$projectId/packages/maven", true))
+    }
+
+    /**
      * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
     fun useEldoNexusRepos(dev: Boolean = true) {
@@ -132,11 +141,14 @@ open class PublishDataExtension(private val project: Project) {
     private fun getGithubCommitHash(): String? =
         System.getenv("GITHUB_SHA")?.substring(0, hashLength)
 
+    private fun getGitlabCommitHash(): String? =
+        System.getenv("CI_COMMIT_SHA")?.substring(0, hashLength)
+
     /**
      * Get the commit hash.
      */
     fun getCommitHash(): String {
-        return getGithubCommitHash() ?: determineLocalCommitHash()
+        return getGithubCommitHash() ?: getGitlabCommitHash() ?: determineLocalCommitHash()
     }
 
     /**
@@ -177,10 +189,14 @@ open class PublishDataExtension(private val project: Project) {
     /**
      * Get the current branch which is determined by GitHub or the local git repository
      */
-    fun getBranch(): String = getGithubBranch() ?: determineLocalBranch()
+    fun getBranch(): String = getGithubBranch() ?: getGitlabBranch() ?: determineLocalBranch()
 
     private fun getGithubBranch(): String? {
         return System.getenv("GITHUB_REF")?.replace("refs/heads/", "")
+    }
+
+    private fun getGitlabBranch(): String? {
+        return System.getenv("CI_COMMIT_BRANCH")?.replace("refs/heads/", "")
     }
 
     private fun determineLocalBranch(): String {
@@ -215,7 +231,7 @@ open class PublishDataExtension(private val project: Project) {
                 "PATREON"
             }
 
-            isPublicBuild() || getGithubBranch() != null -> {
+            isPublicBuild() || getGitlabBranch() != null || getGithubBranch() != null -> {
                 "PUBLIC"
             }
 

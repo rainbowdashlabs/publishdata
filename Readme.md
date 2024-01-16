@@ -31,10 +31,12 @@ plugins {
 publishData {
     // only if you want to publish to the eldonexus. If you call this you will not need to manually add repositories
     useEldoNexusRepos()
+    // only if you want to publish to the gitlab. If you call this you will not need to manually add repositories
+    useGitlabReposForProject("177", "https://gitlab.example.com/")
     // manually register a release repo
     addRepo(Repo(Regex("master"), "", "https://my-repo.com/releases", false))
     // manually register a snapshot repo which will append -SNAPSHOT+<commit_hash>
-    addRepo(Repo(Regex(".*"), "-SNAPSHOT", "https://my-repo.com/snapshots", true))
+    addRepo(Repo(Regex(".*"), "SNAPSHOT", "https://my-repo.com/snapshots", true))
     // Add tasks which should be published
     publishTask("jar")
     publishTask("sourcesJar")
@@ -45,6 +47,7 @@ publishing {
     publications.create<MavenPublication>("maven") {
         // configure the publication as defined previously.
         publishData.configurePublication(this)
+        version = publishData.getVersion(false)
     }
 
     repositories {
@@ -55,6 +58,29 @@ publishing {
             }
 
             name = "MyRepo"
+            // Get the detected repository from the publish data
+            url = uri(publishData.getRepository())
+        }
+    }
+    // For gitlab
+    publications.create<MavenPublication>("maven") {
+        // configure the publication as defined previously.
+        publishData.configurePublication(this)
+        version = publishData.getVersion(false)
+    }
+
+    repositories {
+        maven {
+            credentials(HttpHeaderCredentials::class) {
+                name = "Job-Token"
+                value = System.getenv("CI_JOB_TOKEN")
+            }
+            authentication {
+                create("header", HttpHeaderAuthentication::class)
+            }
+
+
+            name = "Gitlab"
             // Get the detected repository from the publish data
             url = uri(publishData.getRepository())
         }

@@ -1,12 +1,12 @@
 plugins {
-    kotlin("jvm") version "1.8.10"
+    kotlin("jvm") version "1.9.22"
     `maven-publish`
     `kotlin-dsl`
     `java-gradle-plugin`
 }
 
 group = "de.chojo"
-version = "1.2.5"
+version = "1.3.0"
 
 repositories {
     mavenCentral()
