@@ -31,7 +31,12 @@ open class PublishDataExtension(private val project: Project) {
      * The first repo which matches will be the one to be used.
      */
     fun addRepo(repo: Repo) {
-        println("Registered repository ${repo.url} with identifier \"${repo.marker}\" matching \"${repo.identifier}\"")
+        project.logger.debug(
+            "Registered repository {} with identifier \"{}\" matching \"{}\"",
+            repo.url,
+            repo.marker,
+            repo.identifier
+        )
         if (repos.isEmpty() && repo.type != Repo.Type.STABLE) {
             project.logger.warn("Non stable repository registered as first. Make sure to register repos in the correct order.")
             project.logger.warn("The first matching repository will be chosen. It should be a stable repository")
@@ -81,7 +86,7 @@ open class PublishDataExtension(private val project: Project) {
      * Adds a task by name to get published
      */
     fun publishTask(task: String) {
-        println("Registered task $task for publishing")
+        project.logger.debug("Registered task {} for publishing", task)
         tasks.add(task)
     }
 
@@ -96,7 +101,7 @@ open class PublishDataExtension(private val project: Project) {
      * Adds a component to get published
      */
     fun publishComponent(component: String) {
-        println("Registered component $component for publishing")
+        project.logger.debug("Registered component {} for publishing", component)
         components.add(component)
     }
 
@@ -182,7 +187,7 @@ open class PublishDataExtension(private val project: Project) {
 
     private fun determineLocalCommitHash(): String {
         val localBranch = determineLocalBranchInternal()
-        println("Building on branch $localBranch")
+        project.logger.warn("Building on branch $localBranch")
         if (localBranch == null) return "none"
         val file = project.rootProject.file(".git/refs/heads/${localBranch}")
         if (!file.exists()) return "undefined"
@@ -205,7 +210,7 @@ open class PublishDataExtension(private val project: Project) {
 
     private fun determineLocalBranch(): String {
         if (!isPublicBuild()) {
-            println("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
+            project.logger.warn("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
             return "local"
         }
         return determineLocalBranchInternal() ?: "none"
