@@ -33,7 +33,7 @@ publishData {
     useEldoNexusRepos()
     // only if you want to publish to the gitlab. If you call this you will not need to manually add repositories
     useGitlabReposForProject("177", "https://gitlab.example.com/")
-    // manually register a release repo
+    // manually register a release repo.
     addRepo(Repo(Regex("master"), "", "https://my-repo.com/releases", false))
     // manually register a snapshot repo which will append -SNAPSHOT+<commit_hash>
     addRepo(Repo(Regex(".*"), "SNAPSHOT", "https://my-repo.com/snapshots", true))
@@ -47,7 +47,6 @@ publishing {
     publications.create<MavenPublication>("maven") {
         // configure the publication as defined previously.
         publishData.configurePublication(this)
-        version = publishData.getVersion(false)
     }
 
     repositories {
@@ -66,7 +65,6 @@ publishing {
     publications.create<MavenPublication>("maven") {
         // configure the publication as defined previously.
         publishData.configurePublication(this)
-        version = publishData.getVersion(false)
     }
 
     repositories {
@@ -87,3 +85,10 @@ publishing {
     }
 }
 ```
+## Manuall Repositories
+
+When defining your own repositories, make sure to define them in the correct order. The first applicable repository will be chosen. So if you register a wildcard repo first, it will always chose the wildcard repository.
+
+## Usage of getVersion
+
+If you want to use publishData.getVersion() in your code to get a version, make sure that the publishData configuration section is located before that part referencing it.
