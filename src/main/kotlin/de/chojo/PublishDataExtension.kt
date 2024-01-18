@@ -118,9 +118,8 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     private fun getReleaseType(): Repo? {
-        if (repo != null) {
-            return repo
-        }
+        if (repo != null) return repo
+        if (repos.isEmpty()) throw IllegalStateException("No repositories defined. Please define a repository first.")
         val branch = getBranch()
         val first = repos.firstOrNull { r -> r.isRepo(branch) }
         println(if (first == null) "Could not detect release type" else "Detected release of ${first.identifier}")
