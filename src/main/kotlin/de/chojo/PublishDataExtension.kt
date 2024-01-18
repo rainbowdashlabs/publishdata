@@ -44,6 +44,18 @@ open class PublishDataExtension(private val project: Project) {
         repos.add(repo)
     }
 
+    fun addMainRepo(url: String, append: String = "", addCommit: Boolean = false) =
+        addRepo(Repo.main(append, url, addCommit))
+
+    fun addMasterRepo(url: String, append: String = "", addCommit: Boolean = false) =
+        addRepo(Repo.master(append, url, addCommit))
+
+    fun addDevRepo(url: String, append: String = "DEV", addCommit: Boolean = true) =
+        addRepo(Repo.dev(append, url, addCommit))
+
+    fun addSnapshotRepo(url: String, append: String = "SNAPSHOT", addCommit: Boolean = true) =
+        addRepo(Repo.snapshot(append, url, addCommit))
+
     fun addBuildData(additionalData: Map<String, String> = emptyMap()) {
         addBuildData = true
         this.additionalData = additionalData
@@ -57,29 +69,29 @@ open class PublishDataExtension(private val project: Project) {
      * Configures the repositories to use the gitlab repositories as defined in [Repo.master], [Repo.main] and [Repo.snapshot]
      */
     fun useGitlabReposForProject(projectId: String, gitlabUrl: String = "https://gitlab.com/") {
-        addRepo(Repo.main("", "${gitlabUrl}api/v4/projects/$projectId/packages/maven", false))
-        addRepo(Repo.master("", "${gitlabUrl}api/v4/projects/$projectId/packages/maven", false))
-        addRepo(Repo.snapshot("SNAPSHOT", "${gitlabUrl}api/v4/projects/$projectId/packages/maven", true))
+        addMainRepo("${gitlabUrl}api/v4/projects/$projectId/packages/maven")
+        addMasterRepo("${gitlabUrl}api/v4/projects/$projectId/packages/maven")
+        addSnapshotRepo("${gitlabUrl}api/v4/projects/$projectId/packages/maven")
     }
 
     /**
      * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
     fun useEldoNexusRepos(dev: Boolean = true) {
-        addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
-        addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
-        if (dev) addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
-        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
+        addMainRepo("https://eldonexus.de/repository/maven-releases/")
+        addMasterRepo("https://eldonexus.de/repository/maven-releases/")
+        if (dev) addDevRepo("https://eldonexus.de/repository/maven-dev/")
+        addSnapshotRepo("https://eldonexus.de/repository/maven-snapshots/")
     }
 
     /**
      * Configures the repositories to use the internal eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
     fun useInternalEldoNexusRepos() {
-        addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases-internal/", false))
-        addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases-internal/", false))
-        addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev-internal/", true))
-        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots-internal/", true))
+        addMainRepo("https://eldonexus.de/repository/maven-releases-internal/")
+        addMasterRepo("https://eldonexus.de/repository/maven-releases-internal/")
+        addDevRepo("https://eldonexus.de/repository/maven-dev-internal/")
+        addSnapshotRepo("https://eldonexus.de/repository/maven-snapshots-internal/")
     }
 
     /**
