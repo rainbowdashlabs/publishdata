@@ -187,6 +187,7 @@ open class PublishDataExtension(private val project: Project) {
     private fun getVersionString(): String {
         var version = publishingVersion ?: project.version as String
         if (version.isBlank() || version == "unspecified") {
+            project.logger.debug("No version set in project {}. Checking root project.", project.name)
             version = (project.rootProject.version as String)
         }
         val cleaned = version.replace(versionCleaner, "")
