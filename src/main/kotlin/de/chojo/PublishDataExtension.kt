@@ -189,7 +189,9 @@ open class PublishDataExtension(private val project: Project) {
         if (version.isBlank() || version == "unspecified") {
             version = (project.rootProject.version as String)
         }
-        return version.replace(versionCleaner, "")
+        val cleaned = version.replace(versionCleaner, "")
+        if(cleaned != version) project.logger.warn("Changed version $version to $cleaned. Consider removing any DEV or SNAPSHOT suffix as this is added by PublishData.")
+        return cleaned
     }
 
     /**
