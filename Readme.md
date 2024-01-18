@@ -44,8 +44,32 @@ publishData {
 }
 ```
 
+Additional publishData can generate a `build.data` file which contains information about the build itself.
+
+```
+time=ISO 8601 formatted timestamp
+unix=unix timestamp of build time
+type=build type
+branch=branch
+commit=commit hash
+artifactVersion=version
+artifact=artifact name
+runtime=java runtime used to build
+```
+
+To enable that simply add this to your configuration
+
+```kt
+publishData {
+    addBuildData()
+}
+```
+
+This function also accepts a map to add additional values.
+
 #### Adding repositories
-You can define repositories like that:
+You have to define repositories like that or chose the eldonexus or gitlab configuration below:
+
 ```kt
 publishData {
     // manually register a release repo for main branch
@@ -76,7 +100,6 @@ publishing {
 ```
 
 Make sure to declare them in the correct order. PublishData will take the first applicable repository. 
-
 
 #### Eldonexus
 
