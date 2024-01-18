@@ -32,6 +32,10 @@ open class PublishDataExtension(private val project: Project) {
      */
     fun addRepo(repo: Repo) {
         println("Registered repository ${repo.url} with identifier \"${repo.marker}\" matching \"${repo.identifier}\"")
+        if (repos.isEmpty() && repo.type != Repo.Type.STABLE) {
+            project.logger.warn("Non stable repository registered as first. Make sure to register repos in the correct order.")
+            project.logger.warn("The first matching repository will be chosen. It should be a stable repository")
+        }
         repos.add(repo)
     }
 
