@@ -236,7 +236,10 @@ open class PublishDataExtension(private val project: Project) {
 
     private fun determineLocalBranchInternal(): String? {
         val file = project.rootProject.file(".git/HEAD")
-        if (!file.exists()) return null
+        if (!file.exists()) {
+            project.logger.warn("File $file does not. Could not determine branch.")
+            return null
+        }
         val branch = file.useLines { it.firstOrNull() }
         return branch?.replace("ref: refs/heads/", "") ?: "local"
     }
