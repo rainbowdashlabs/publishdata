@@ -11,7 +11,9 @@ chooses the repository based on the current branch.
 
 ## Setup
 
-**settings.gradle.kts**
+### settings.gradle.kts
+
+Add the eldonexus as a plugin repository
 
 ```kotlin
 pluginManagement {
@@ -21,26 +23,59 @@ pluginManagement {
 }
 ```
 
-**build.gradle.kts**
+### build.gradle.kts
 
-```kotlin
+#### General
+
+Apply the publishdata as a plugin
+```
 plugins {
     id("de.chojo.publishdata") version "version"
 }
+```
 
+Basic configuration which tasks you want to publish
+```kt
 publishData {
-    // only if you want to publish to the eldonexus. If you call this you will not need to manually add repositories
-    useEldoNexusRepos()
-    // only if you want to publish to the gitlab. If you call this you will not need to manually add repositories
-    useGitlabReposForProject("177", "https://gitlab.example.com/")
-    // manually register a release repo.
-    addRepo(Repo(Regex("master"), "", "https://my-repo.com/releases", false))
-    // manually register a snapshot repo which will append -SNAPSHOT+<commit_hash>
-    addRepo(Repo(Regex(".*"), "SNAPSHOT", "https://my-repo.com/snapshots", true))
     // Add tasks which should be published
     publishTask("jar")
     publishTask("sourcesJar")
     publishTask("javadocJar")
+}
+```
+
+Additional publishData can generate a `build.data` file which contains information about the build itself.
+
+```
+time=ISO 8601 formatted timestamp
+unix=unix timestamp of build time
+type=build type
+branch=branch
+commit=commit hash
+artifactVersion=version
+artifact=artifact name
+runtime=java runtime used to build
+```
+
+To enable that simply add this to your configuration
+
+```kt
+publishData {
+    addBuildData()
+}
+```
+
+This function also accepts a map to add additional values.
+
+#### Adding repositories
+You have to define repositories like that or chose the eldonexus or gitlab configuration below:
+
+```kt
+publishData {
+    // manually register a release repo for main branch
+    addMainRepo("https://my-repo.com/releases")
+    // manually register a snapshot repo which will append -SNAPSHOT+<commit_hash>
+    addSnapshotRepo("https://my-repo.com/snapshots")
 }
 
 publishing {
@@ -57,11 +92,37 @@ publishing {
             }
 
             name = "MyRepo"
-            // Get the detected repository from the publish data
+            // Get the detected repository from the publishData
             url = uri(publishData.getRepository())
         }
     }
-    // For gitlab
+}
+```
+
+Make sure to declare them in the correct order. PublishData will take the first applicable repository. 
+
+#### Eldonexus
+
+Additionaly call this in the configuration to publish to the eldonexus.
+This will preconfigure for main, master, dev and snapshot branches.
+
+```kt
+publishData {
+    // only if you want to publish to the eldonexus. If you call this you will not need to manually add repositories
+    useEldoNexusRepos()
+}
+```
+
+#### GitLab
+Additionaly call this in the configuration to publish to a gitlab repository and replace your repository declaration.
+
+```kt
+publishData {
+    // only if you want to publish to the gitlab. If you call this you will not need to manually add repositories
+    useGitlabReposForProject("177", "https://gitlab.example.com/")
+}
+
+publishing {
     publications.create<MavenPublication>("maven") {
         // configure the publication as defined previously.
         publishData.configurePublication(this)
@@ -76,8 +137,7 @@ publishing {
             authentication {
                 create("header", HttpHeaderAuthentication::class)
             }
-
-
+            
             name = "Gitlab"
             // Get the detected repository from the publish data
             url = uri(publishData.getRepository())
@@ -85,10 +145,3 @@ publishing {
     }
 }
 ```
-## Manuall Repositories
-
-When defining your own repositories, make sure to define them in the correct order. The first applicable repository will be chosen. So if you register a wildcard repo first, it will always chose the wildcard repository.
-
-## Usage of getVersion
-
-If you want to use publishData.getVersion() in your code to get a version, make sure that the publishData configuration section is located before that part referencing it.

@@ -31,9 +31,30 @@ open class PublishDataExtension(private val project: Project) {
      * The first repo which matches will be the one to be used.
      */
     fun addRepo(repo: Repo) {
-        println("Registered repository ${repo.url} with identifier \"${repo.marker}\" matching \"${repo.identifier}\"")
+        project.logger.debug(
+            "Registered repository {} with identifier \"{}\" matching \"{}\"",
+            repo.url,
+            repo.marker,
+            repo.identifier
+        )
+        if (repos.isEmpty() && repo.type != Repo.Type.STABLE) {
+            project.logger.warn("Non stable repository registered as first. Make sure to register repos in the correct order.")
+            project.logger.warn("The first matching repository will be chosen. It should be a stable repository")
+        }
         repos.add(repo)
     }
+
+    fun addMainRepo(url: String, append: String = "", addCommit: Boolean = false) =
+        addRepo(Repo.main(append, url, addCommit))
+
+    fun addMasterRepo(url: String, append: String = "", addCommit: Boolean = false) =
+        addRepo(Repo.master(append, url, addCommit))
+
+    fun addDevRepo(url: String, append: String = "DEV", addCommit: Boolean = true) =
+        addRepo(Repo.dev(append, url, addCommit))
+
+    fun addSnapshotRepo(url: String, append: String = "SNAPSHOT", addCommit: Boolean = true) =
+        addRepo(Repo.snapshot(append, url, addCommit))
 
     fun addBuildData(additionalData: Map<String, String> = emptyMap()) {
         addBuildData = true
@@ -48,36 +69,36 @@ open class PublishDataExtension(private val project: Project) {
      * Configures the repositories to use the gitlab repositories as defined in [Repo.master], [Repo.main] and [Repo.snapshot]
      */
     fun useGitlabReposForProject(projectId: String, gitlabUrl: String = "https://gitlab.com/") {
-        addRepo(Repo.main("", "${gitlabUrl}api/v4/projects/$projectId/packages/maven", false))
-        addRepo(Repo.master("", "${gitlabUrl}api/v4/projects/$projectId/packages/maven", false))
-        addRepo(Repo.snapshot("SNAPSHOT", "${gitlabUrl}api/v4/projects/$projectId/packages/maven", true))
+        addMainRepo("${gitlabUrl}api/v4/projects/$projectId/packages/maven")
+        addMasterRepo("${gitlabUrl}api/v4/projects/$projectId/packages/maven")
+        addSnapshotRepo("${gitlabUrl}api/v4/projects/$projectId/packages/maven")
     }
 
     /**
      * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
     fun useEldoNexusRepos(dev: Boolean = true) {
-        addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases/", false))
-        addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases/", false))
-        if (dev) addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev/", true))
-        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots/", true))
+        addMainRepo("https://eldonexus.de/repository/maven-releases/")
+        addMasterRepo("https://eldonexus.de/repository/maven-releases/")
+        if (dev) addDevRepo("https://eldonexus.de/repository/maven-dev/")
+        addSnapshotRepo("https://eldonexus.de/repository/maven-snapshots/")
     }
 
     /**
      * Configures the repositories to use the internal eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
      */
     fun useInternalEldoNexusRepos() {
-        addRepo(Repo.main("", "https://eldonexus.de/repository/maven-releases-internal/", false))
-        addRepo(Repo.master("", "https://eldonexus.de/repository/maven-releases-internal/", false))
-        addRepo(Repo.dev("DEV", "https://eldonexus.de/repository/maven-dev-internal/", true))
-        addRepo(Repo.snapshot("SNAPSHOT", "https://eldonexus.de/repository/maven-snapshots-internal/", true))
+        addMainRepo("https://eldonexus.de/repository/maven-releases-internal/")
+        addMasterRepo("https://eldonexus.de/repository/maven-releases-internal/")
+        addDevRepo("https://eldonexus.de/repository/maven-dev-internal/")
+        addSnapshotRepo("https://eldonexus.de/repository/maven-snapshots-internal/")
     }
 
     /**
      * Adds a task by name to get published
      */
     fun publishTask(task: String) {
-        println("Registered task $task for publishing")
+        project.logger.debug("Registered task {} for publishing", task)
         tasks.add(task)
     }
 
@@ -92,17 +113,17 @@ open class PublishDataExtension(private val project: Project) {
      * Adds a component to get published
      */
     fun publishComponent(component: String) {
-        println("Registered component $component for publishing")
+        project.logger.debug("Registered component {} for publishing", component)
         components.add(component)
     }
 
     private fun getReleaseType(): Repo? {
-        if (repo != null) {
-            return repo
-        }
+        if (repo != null) return repo
+        if (repos.isEmpty()) throw IllegalStateException("No repositories defined. Please define a repository first.")
         val branch = getBranch()
         val first = repos.firstOrNull { r -> r.isRepo(branch) }
-        println(if (first == null) "Could not detect release type" else "Detected release of ${first.identifier}")
+        if (first == null) project.logger.warn("Could not detect release type for project {}", project.name)
+        else project.logger.debug("Detected release of {} for project {}", first.identifier, project.name)
         return first
     }
 
@@ -166,9 +187,12 @@ open class PublishDataExtension(private val project: Project) {
     private fun getVersionString(): String {
         var version = publishingVersion ?: project.version as String
         if (version.isBlank() || version == "unspecified") {
+            project.logger.debug("No version set in project {}. Checking root project.", project.name)
             version = (project.rootProject.version as String)
         }
-        return version.replace(versionCleaner, "")
+        val cleaned = version.replace(versionCleaner, "")
+        if (cleaned != version) project.logger.warn("Changed version $version to $cleaned. Consider removing any DEV or SNAPSHOT suffix as this is added by PublishData.")
+        return cleaned
     }
 
     /**
@@ -178,10 +202,13 @@ open class PublishDataExtension(private val project: Project) {
 
     private fun determineLocalCommitHash(): String {
         val localBranch = determineLocalBranchInternal()
-        println("Building on branch $localBranch")
+        project.logger.warn("Building on branch $localBranch")
         if (localBranch == null) return "none"
         val file = project.rootProject.file(".git/refs/heads/${localBranch}")
-        if (!file.exists()) return "undefined"
+        if (!file.exists()) {
+            project.logger.warn("File $file does not exist. Could not determine commit.")
+            return "undefined"
+        }
         val hash = file.useLines { it.firstOrNull() }
         return hash?.substring(0, hashLength) ?: "undefined"
     }
@@ -201,7 +228,7 @@ open class PublishDataExtension(private val project: Project) {
 
     private fun determineLocalBranch(): String {
         if (!isPublicBuild()) {
-            println("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
+            project.logger.warn("Local build detected. Set the env variable PUBLIC_BUILD=true to build non local builds")
             return "local"
         }
         return determineLocalBranchInternal() ?: "none"
@@ -209,7 +236,10 @@ open class PublishDataExtension(private val project: Project) {
 
     private fun determineLocalBranchInternal(): String? {
         val file = project.rootProject.file(".git/HEAD")
-        if (!file.exists()) return null
+        if (!file.exists()) {
+            project.logger.warn("File $file does not. Could not determine branch.")
+            return null
+        }
         val branch = file.useLines { it.firstOrNull() }
         return branch?.replace("ref: refs/heads/", "") ?: "local"
     }
@@ -223,18 +253,10 @@ open class PublishDataExtension(private val project: Project) {
 
     fun getBuildType(): String {
         return when {
-            System.getenv("BUILD_TYPE") != null -> {
-                return System.getenv("BUILD_TYPE")
-            }
-
-            System.getenv("PATREON")?.equals("true", true) == true -> {
-                "PATREON"
-            }
-
-            isPublicBuild() || getGitlabBranch() != null || getGithubBranch() != null -> {
-                "PUBLIC"
-            }
-
+            System.getenv("BUILD_TYPE") != null -> return System.getenv("BUILD_TYPE")
+            System.getenv("PATREON")?.equals("true", true) == true -> "PATREON"
+            System.getenv("KOFI")?.equals("true", true) == true -> "KOFI"
+            isPublicBuild() || getGitlabBranch() != null || getGithubBranch() != null -> "PUBLIC"
             else -> "LOCAL"
         }
     }
