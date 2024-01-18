@@ -191,7 +191,7 @@ open class PublishDataExtension(private val project: Project) {
             version = (project.rootProject.version as String)
         }
         val cleaned = version.replace(versionCleaner, "")
-        if(cleaned != version) project.logger.warn("Changed version $version to $cleaned. Consider removing any DEV or SNAPSHOT suffix as this is added by PublishData.")
+        if (cleaned != version) project.logger.warn("Changed version $version to $cleaned. Consider removing any DEV or SNAPSHOT suffix as this is added by PublishData.")
         return cleaned
     }
 
@@ -255,6 +255,7 @@ open class PublishDataExtension(private val project: Project) {
         return when {
             System.getenv("BUILD_TYPE") != null -> return System.getenv("BUILD_TYPE")
             System.getenv("PATREON")?.equals("true", true) == true -> "PATREON"
+            System.getenv("KOFI")?.equals("true", true) == true -> "KOFI"
             isPublicBuild() || getGitlabBranch() != null || getGithubBranch() != null -> "PUBLIC"
             else -> "LOCAL"
         }
