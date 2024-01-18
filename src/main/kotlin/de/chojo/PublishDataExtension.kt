@@ -253,18 +253,9 @@ open class PublishDataExtension(private val project: Project) {
 
     fun getBuildType(): String {
         return when {
-            System.getenv("BUILD_TYPE") != null -> {
-                return System.getenv("BUILD_TYPE")
-            }
-
-            System.getenv("PATREON")?.equals("true", true) == true -> {
-                "PATREON"
-            }
-
-            isPublicBuild() || getGitlabBranch() != null || getGithubBranch() != null -> {
-                "PUBLIC"
-            }
-
+            System.getenv("BUILD_TYPE") != null -> return System.getenv("BUILD_TYPE")
+            System.getenv("PATREON")?.equals("true", true) == true -> "PATREON"
+            isPublicBuild() || getGitlabBranch() != null || getGithubBranch() != null -> "PUBLIC"
             else -> "LOCAL"
         }
     }
