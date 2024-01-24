@@ -8,11 +8,7 @@ package de.chojo
  * @property url the remote repository url
  * @property addCommit true when the commit hash should be appended on the version
  */
-class Repo(val identifier: Regex, val marker: String, val url: String, private val addCommit: Boolean, val type: Type) {
-
-    enum class Type {
-        STABLE, DEV, SNAPSHOT
-    }
+open class BuildType(val identifier: Regex, val marker: String, protected  val addCommit: Boolean, val type: ReleaseType) {
 
     /**
      * Append the optional [marker] and [commitHash] on the version.
@@ -29,25 +25,25 @@ class Repo(val identifier: Regex, val marker: String, val url: String, private v
     /**
      * Checks if the [branch] matches the [identifier]
      */
-    fun isRepo(branch: String): Boolean {
+    fun isType(branch: String): Boolean {
         return identifier.matches(branch)
     }
 
     companion object {
-        fun master(append: String, repo: String, addCommit: Boolean): Repo {
-            return Repo(Regex("master"), append, repo, addCommit, Type.STABLE)
+        fun master(append: String, addCommit: Boolean): BuildType {
+            return BuildType(Regex("master"), append, addCommit, ReleaseType.STABLE)
         }
 
-        fun main(append: String, repo: String, addCommit: Boolean): Repo {
-            return Repo(Regex("main"), append, repo, addCommit, Type.STABLE)
+        fun main(append: String, addCommit: Boolean): BuildType {
+            return BuildType(Regex("main"), append, addCommit, ReleaseType.STABLE)
         }
 
-        fun dev(append: String, repo: String, addCommit: Boolean): Repo {
-            return Repo(Regex("(?i)^dev.*"), append, repo, addCommit, Type.DEV)
+        fun dev(append: String, addCommit: Boolean): BuildType {
+            return BuildType(Regex("(?i)^dev.*"), append, addCommit, ReleaseType.DEV)
         }
 
-        fun snapshot(append: String, repo: String, addCommit: Boolean): Repo {
-            return Repo(Regex(".*"), append, repo, addCommit, Type.SNAPSHOT)
+        fun snapshot(append: String, addCommit: Boolean): BuildType {
+            return BuildType(Regex(".*"), append, addCommit, ReleaseType.SNAPSHOT)
         }
     }
 }

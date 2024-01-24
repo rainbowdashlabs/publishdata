@@ -17,44 +17,69 @@ open class PublishDataExtension(private val project: Project) {
     @Input
     @Optional
     var publishingVersion: String? = null
-    var repos: MutableSet<Repo> = mutableSetOf()
+    var buildTypes: MutableSet<BuildType> = mutableSetOf()
+    var buildRepositories: MutableSet<BuildRepository> = mutableSetOf()
     var components: MutableSet<String> = mutableSetOf()
     var tasks: MutableSet<String> = mutableSetOf()
-    var repo: Repo? = null
+    var buildType: BuildType? = null
+    var buildRepository: BuildRepository? = null
     var addBuildData = false
     var additionalData: Map<String, String> = emptyMap()
 
     /**
-     * Registers a repository.
+     * Registers a repository or build type.
      *
      * Order matters. The first registered repository has the highest priority.
      * The first repo which matches will be the one to be used.
      */
-    fun addRepo(repo: Repo) {
-        project.logger.debug(
-            "Registered repository {} with identifier \"{}\" matching \"{}\"",
-            repo.url,
-            repo.marker,
-            repo.identifier
-        )
-        if (repos.isEmpty() && repo.type != Repo.Type.STABLE) {
-            project.logger.warn("Non stable repository registered as first. Make sure to register repos in the correct order.")
-            project.logger.warn("The first matching repository will be chosen. It should be a stable repository")
+    fun addRepo(buildType: BuildType) {
+        if (buildType is BuildRepository) {
+            project.logger.debug(
+                "Registered repository {} with identifier \"{}\" matching \"{}\"",
+                buildType.url,
+                buildType.marker,
+                buildType.identifier
+            )
+            if (buildTypes.isEmpty() && buildType.type != ReleaseType.STABLE) {
+                project.logger.warn("Non stable repository registered as first. Make sure to register repos in the correct order.")
+                project.logger.warn("The first matching repository will be chosen. It should be a stable repository")
+            }
+            buildRepositories.add(buildType)
+        } else {
+            project.logger.debug(
+                "Registered type {} with identifier \"{}\" matching \"{}\"",
+                buildType.type,
+                buildType.marker,
+                buildType.identifier
+            )
+            buildTypes.add(buildType)
+
         }
-        repos.add(repo)
     }
 
     fun addMainRepo(url: String, append: String = "", addCommit: Boolean = false) =
-        addRepo(Repo.main(append, url, addCommit))
+        addRepo(BuildRepository.main(append, url, addCommit))
 
     fun addMasterRepo(url: String, append: String = "", addCommit: Boolean = false) =
-        addRepo(Repo.master(append, url, addCommit))
+        addRepo(BuildRepository.master(append, url, addCommit))
 
     fun addDevRepo(url: String, append: String = "DEV", addCommit: Boolean = true) =
-        addRepo(Repo.dev(append, url, addCommit))
+        addRepo(BuildRepository.dev(append, url, addCommit))
 
     fun addSnapshotRepo(url: String, append: String = "SNAPSHOT", addCommit: Boolean = true) =
-        addRepo(Repo.snapshot(append, url, addCommit))
+        addRepo(BuildRepository.snapshot(append, url, addCommit))
+
+    fun addMainType(append: String = "", addCommit: Boolean = false) =
+        addRepo(BuildType.main(append, addCommit))
+
+    fun addMasterType(append: String = "", addCommit: Boolean = false) =
+        addRepo(BuildType.master(append, addCommit))
+
+    fun addDevType(append: String = "DEV", addCommit: Boolean = true) =
+        addRepo(BuildType.dev(append, addCommit))
+
+    fun addSnapshotType(append: String = "SNAPSHOT", addCommit: Boolean = true) =
+        addRepo(BuildType.snapshot(append, addCommit))
 
     fun addBuildData(additionalData: Map<String, String> = emptyMap()) {
         addBuildData = true
@@ -66,7 +91,7 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
-     * Configures the repositories to use the gitlab repositories as defined in [Repo.master], [Repo.main] and [Repo.snapshot]
+     * Configures the repositories to use the gitlab repositories as defined in [BuildRepository.master], [BuildRepository.main] and [BuildRepository.snapshot]
      */
     fun useGitlabReposForProject(projectId: String, gitlabUrl: String = "https://gitlab.com/") {
         addMainRepo("${gitlabUrl}api/v4/projects/$projectId/packages/maven")
@@ -75,7 +100,7 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
-     * Configures the repositories to use the eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
+     * Configures the repositories to use the eldonexus repositories as defined in [BuildRepository.master], [BuildRepository.main], [BuildRepository.dev] and [BuildRepository.snapshot]
      */
     fun useEldoNexusRepos(dev: Boolean = true) {
         addMainRepo("https://eldonexus.de/repository/maven-releases/")
@@ -85,13 +110,32 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
-     * Configures the repositories to use the internal eldonexus repositories as defined in [Repo.master], [Repo.main], [Repo.dev] and [Repo.snapshot]
+     * Configures the repositories to use the internal eldonexus repositories as defined in [BuildRepository.master], [BuildRepository.main], [BuildRepository.dev] and [BuildRepository.snapshot]
      */
     fun useInternalEldoNexusRepos() {
         addMainRepo("https://eldonexus.de/repository/maven-releases-internal/")
         addMasterRepo("https://eldonexus.de/repository/maven-releases-internal/")
         addDevRepo("https://eldonexus.de/repository/maven-dev-internal/")
         addSnapshotRepo("https://eldonexus.de/repository/maven-snapshots-internal/")
+    }
+
+    /**
+     * Registers main, master and snapshot types
+     */
+    fun useDefaultBuildTypes() {
+        addMainType()
+        addMasterType()
+        addSnapshotType()
+    }
+
+    /**
+     * Registers main, master, dev and snapshot types
+     */
+    fun useExtendedBuildTypes() {
+        addMainType()
+        addMasterType()
+        addDevType()
+        addSnapshotType()
     }
 
     /**
@@ -117,11 +161,26 @@ open class PublishDataExtension(private val project: Project) {
         components.add(component)
     }
 
-    private fun getReleaseType(): Repo? {
-        if (repo != null) return repo
-        if (repos.isEmpty()) throw IllegalStateException("No repositories defined. Please define a repository first.")
+    private fun getReleaseType(): BuildType? {
+        if (buildType != null) return buildType
+        if (buildTypes.isEmpty() && buildRepositories.isEmpty()) throw IllegalStateException("No build types defined. Please define a build type or repository first.")
+        buildType = findMatchingBuildType(buildTypes) ?: getReleaseRepository()
+        return buildType
+    }
+
+    private fun getReleaseRepository(): BuildRepository? {
+        if (buildRepository != null) return buildRepository
+        if (buildRepositories.isEmpty()) throw IllegalStateException("No repositories defined. Please define a repository first.")
+        buildRepository = findMatchingBuildType(buildRepositories)
+        if (buildRepository != null) {
+            project.logger.info("Publishing {} to {}", project.name, buildRepository!!.url)
+        }
+        return buildRepository
+    }
+
+    private fun <T : BuildType> findMatchingBuildType(types: Set<T>): T? {
         val branch = getBranch()
-        val first = repos.firstOrNull { r -> r.isRepo(branch) }
+        val first = types.firstOrNull { r -> r.isType(branch) }
         if (first == null) project.logger.warn("Could not detect release type for project {}", project.name)
         else project.logger.debug("Detected release of {} for project {}", first.identifier, project.name)
         return first
@@ -173,12 +232,12 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
-     * Get the version with the optional [Repo.marker] without the commit hash
+     * Get the version with the optional [BuildType.marker] without the commit hash
      */
     fun getVersion(): String = getVersion(false)
 
     /**
-     * Get the version with the optional [Repo.marker]. Will append the commit hash when [Repo.addCommit] and [appendCommit] is set to true
+     * Get the version with the optional [BuildType.marker]. Will append the commit hash when [BuildType.addCommit] and [appendCommit] is set to true
      */
     fun getVersion(appendCommit: Boolean): String {
         return getReleaseType()?.append(getVersionString(), getCommitHash(), appendCommit) ?: "undefined"
@@ -196,9 +255,9 @@ open class PublishDataExtension(private val project: Project) {
     }
 
     /**
-     * Get the [Repo.url]
+     * Get the [BuildRepository.url]
      */
-    fun getRepository(): String = getReleaseType()?.url ?: ""
+    fun getRepository(): String = getReleaseRepository()?.url ?: ""
 
     private fun determineLocalCommitHash(): String {
         val localBranch = determineLocalBranchInternal()
