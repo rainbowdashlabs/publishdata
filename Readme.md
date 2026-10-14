@@ -4,20 +4,22 @@
 ![Sonatype Nexus (Development)](https://img.shields.io/nexus/maven-dev/de.chojo/publishdata?label=DEV&logo=Release&server=https%3A%2F%2Feldonexus.de&style=for-the-badge)
 ![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/de.chojo/publishdata?color=orange&label=Snapshot&server=https%3A%2F%2Feldonexus.de&style=for-the-badge)
 
-Small gradle plugin which I use to avoid boilerplate code for version detection.
 
-This util helps to publish artifacts, sets the correction version with optional commit hash and branch identifier and
-chooses the repository based on the current branch.
+Small Gradle plugin that sets the version of a build from where it runs — release tag, dev branch,
+feature branch or local machine — injects build data into the artifact, and wires `maven-publish`
+to the matching repository.
+
+Requires Gradle 8.5 or newer.
 
 ## Setup
 
-### settings.gradle.kts
-
-Add the eldonexus as a plugin repository
+The plugin is published to the Gradle Plugin Portal and to the EldoNexus. For the EldoNexus, add
+it to the plugin repositories in `settings.gradle.kts`:
 
 ```kotlin
 pluginManagement {
     repositories {
+        gradlePluginPortal()
         maven("https://eldonexus.de/repository/maven-public/")
     }
 }
@@ -25,123 +27,337 @@ pluginManagement {
 
 ### build.gradle.kts
 
-#### General
-
-Apply the publishdata as a plugin
-```
+```kotlin
 plugins {
-    id("de.chojo.publishdata") version "version"
+    `java-library`
+    `maven-publish`
+    id("de.chojo.publishdata") version "2.0.0"
 }
 ```
 
-Basic configuration which tasks you want to publish
-```kt
+### Version
+
+The plugin owns `project.version`. Builds that are not tag builds need a base version, either in
+`gradle.properties`
+
+```properties
+version=1.5.0
+```
+
+or in the build script
+
+```kotlin
 publishData {
-    // Add tasks which should be published
-    publishTask("jar")
-    publishTask("sourcesJar")
-    publishTask("javadocJar")
+    baseVersion = "1.5.0"
 }
 ```
 
-Additional publishData can generate a `build.data` file which contains information about the build itself.
+Do not assign `version = …` in the build script: it replaces the resolved version, which is reported
+as a warning. A base version ending in `-SNAPSHOT` or `-DEV` is cut back to `1.5.0` with a warning,
+since the channels add those suffixes.
+
+Without further configuration:
+
+| Build                                         | Version          |
+|-----------------------------------------------|------------------|
+| tag `v1.4.0` or `1.4.0`                       | `1.4.0`          |
+| any branch, pull or merge request             | `1.5.0-SNAPSHOT` |
+| local build                                   | `1.5.0-SNAPSHOT` |
+
+Releases come from tags. A branch only releases when the release channel names it, see
+[Channels](#channels).
+
+A local build is only treated like a CI build with the environment variable `PUBLIC_BUILD=true`, so a
+release cannot be built by accident on a developer machine.
+
+Without a base version, non-tag builds get Gradle's `unspecified` with a warning; everything but
+publishing to a repository keeps working.
+
+The version is fixed once the build script has run. Later changes to the configuration, e.g. in an
+`afterEvaluate` block, do not change it anymore, and `baseVersion` and `hashLength` can no longer be
+set.
+
+`./gradlew -q printVersion` prints the version, e.g. for Docker tags or release names in CI. A
+`printVersion` task of the build script itself takes precedence.
+
+`--info` logs how the version was chosen:
 
 ```
-time=ISO 8601 formatted timestamp
-unix=unix timestamp of build time
-type=build type
-branch=branch
-commit=commit hash
+PublishData resolved version 1.4.0 of :core in channel 'release' on GITHUB: tag 'v1.4.0' matches 'v?(?<version>\d.*)'
+```
+
+### Where the git state comes from
+
+1. `PUBLISHDATA_REF` (`refs/tags/v1.2.3`, `refs/heads/main` or a branch name) and optionally
+   `PUBLISHDATA_COMMIT`, for any CI.
+2. GitHub Actions: tags, branches and pull requests.
+3. GitLab CI: tag pipelines, branch pipelines and merge request pipelines.
+4. Bitbucket Pipelines: tags, branches and pull requests.
+5. Jenkins: tags, branches and change requests of multibranch pipelines; `GIT_BRANCH` for other jobs.
+6. The local `git`, including tags pointing at `HEAD`.
+
+### Channels
+
+Channels decide which builds get which version and where they are published. They are tried in
+order; the first match wins.
+
+```kotlin
+publishData {
+    channels {
+        release("https://repo.example.com/releases")          // tags
+        dev("https://repo.example.com/dev")                   // dev* branches, -DEV
+        channel("rc", "https://repo.example.com/rc") {        // a channel of your own
+            onBranch(Regex("release/.*")).suffix("RC")
+        }
+        snapshot("https://repo.example.com/snapshots")        // everything else, -SNAPSHOT
+    }
+}
+```
+
+Matchers and options of a channel:
+
+| Call                          | Effect                                                                     |
+|-------------------------------|----------------------------------------------------------------------------|
+| `onTag()`                     | tags like `v1.2.3` / `1.2.3`; the version is taken from the tag            |
+| `onTag("release-(?<version>.+)")` | custom tag pattern; the version is the group `version` or the whole tag |
+| `onBranch("main", "master")`  | these branches                                                             |
+| `onBranch(Regex("dev.*"))`    | branches matching the pattern                                              |
+| `onAnyRef()`                  | every build                                                                |
+| `suffix("DEV")`               | appends `-DEV`                                                             |
+| `branchSuffix()`              | inserts the branch, `1.5.0-feature-x-SNAPSHOT`; not for `main` / `master`  |
+| `branchSuffix(listOf("develop"))` | same, with other branches keeping the plain version                    |
+| `commitHash()`                | appends `+<short hash>`; length via `publishData.hashLength` (default 7)   |
+| `excludeChangeRequests()`     | pull and merge request builds skip this channel (default for `release`)    |
+
+`release` without matchers applies to tags, `dev` to branches starting with `dev` (any case) with
+suffix `DEV`, and `snapshot` to every build. The repository is optional for all of them, so a
+project can be versioned without publishing anywhere:
+
+```kotlin
+publishData {
+    channels {
+        release()
+        dev()
+        snapshot()
+    }
+}
+```
+
+Without any channel, `release` and `snapshot` apply without a repository.
+
+Order matters: a channel after one that matches every build, such as `snapshot`, is never used, and
+neither is a `channel(…)` without matchers. Both are reported as a warning.
+
+To release from branches as well, name them:
+
+```kotlin
+release("https://repo.example.com/releases") {
+    onTag().onBranch("main", "master")
+}
+```
+
+`branchSuffix()` keeps snapshots of different branches apart. Characters other than letters, digits,
+`.` and `_` become `-`. Tag builds and local builds without `PUBLIC_BUILD` keep the plain version.
+
+Maven snapshot repositories expect versions ending in `-SNAPSHOT`. `branchSuffix()` keeps that
+ending; `commitHash()` does not, so use it only with repositories that accept any version.
+
+#### Presets
+
+```kotlin
+publishData {
+    eldoNexus()                     // release (tags), dev (dev* branches, -DEV), snapshot
+    eldoNexus(internal = true)      // the internal EldoNexus repositories
+    eldoNexus(dev = false)          // without the dev channel
+    gitLab(projectId = "177")       // release and snapshot to the project's package registry
+    gitLab("177", "https://gitlab.example.com/")
+}
+```
+
+### Publishing
+
+When `maven-publish` is applied, the plugin
+
+- creates a publication `maven` from the `java` component, unless the project declares a publication
+  itself or uses `java-gradle-plugin`,
+- registers a Maven repository with the URL of the resolved channel, named `PublishData`
+  (`EldoNexus` / `GitLab` with the presets).
+
+The presets bring their credentials:
+
+- `eldoNexus()` reads the gradle properties `EldoNexusUsername` and `EldoNexusPassword`, on CI e.g.
+  from the environment variables `ORG_GRADLE_PROJECT_EldoNexusUsername` and
+  `ORG_GRADLE_PROJECT_EldoNexusPassword`. They are only required when publishing to the repository.
+- `gitLab(…)` authenticates with the pipeline's `CI_JOB_TOKEN`.
+
+`repository { }` replaces those defaults and configures the repository freely:
+
+```kotlin
+publishData {
+    channels {
+        release("https://repo.example.com/releases")
+        snapshot("https://repo.example.com/snapshots")
+    }
+    repository {
+        credentials {
+            username = System.getenv("REPO_USER")
+            password = System.getenv("REPO_PASSWORD")
+        }
+    }
+}
+```
+
+Further options:
+
+```kotlin
+publishData {
+    component = "javaPlatform"          // component of the automatic publication
+    groupId = "de.chojo.multi"          // default: group of the root project, else of this project
+    artifactId = "multi-api"            // default: project name in lower case, also used in build data
+    artifact(tasks.named("shadowJar"))  // additional artifacts
+    autoPublication = false             // configure publications yourself
+    repositoryName = "MyRepo"
+}
+```
+
+The resolution is available for anything else:
+
+```kotlin
+publishData.resolution.get().let { println("${it.channel} ${it.version} ${it.repository}") }
+```
+
+### Build data
+
+```kotlin
+publishData {
+    buildData()
+}
+```
+
+adds `build.data` to the main resources:
+
+```properties
+time=ISO 8601 timestamp of the build
+unix=unix timestamp of the build
+type=BUILD_TYPE environment variable, else PUBLIC or LOCAL
+branch=branch, or none
+commit=short commit hash, or none
 artifactVersion=version
 artifact=artifact name
-runtime=java runtime used to build
+runtime=Java runtime of the build
+tag=tag the version was taken from, or none
+channel=resolved channel
 ```
 
-To enable that simply add this to your configuration
-
-```kt
+```kotlin
 publishData {
-    addBuildData()
-}
-```
-
-This function also accepts a map to add additional values.
-
-#### Adding repositories
-You have to define repositories like that or chose the eldonexus or gitlab configuration below:
-
-```kt
-publishData {
-    // manually register a release repo for main branch
-    addMainRepo("https://my-repo.com/releases")
-    // manually register a snapshot repo which will append -SNAPSHOT+<commit_hash>
-    addSnapshotRepo("https://my-repo.com/snapshots")
-}
-
-publishing {
-    publications.create<MavenPublication>("maven") {
-        // configure the publication as defined previously.
-        publishData.configurePublication(this)
-    }
-
-    repositories {
-        maven {
-            authentication {
-                // Auth for the repository
-                // ....
-            }
-
-            name = "MyRepo"
-            // Get the detected repository from the publishData
-            url = uri(publishData.getRepository())
-        }
+    buildData {
+        fileName = "myplugin.data"         // default build.data
+        includeTime = false                // reproducible, cacheable output
+        put("discord", "https://discord.gg/…")
+        put("build", providers.environmentVariable("GITHUB_RUN_NUMBER"))
     }
 }
 ```
 
-Make sure to declare them in the correct order. PublishData will take the first applicable repository. 
+## Multi-module builds
 
-#### Eldonexus
+Every project that applies the plugin resolves its version on its own. With the same configuration
+they all agree. Nothing is inherited between projects, except that `version` in the root
+`gradle.properties` is the base version for all of them. Projects without the plugin keep that raw
+`version`, so apply the plugin to the root as well when it should carry the resolved version too,
+e.g. for aggregated javadoc or a root artifact. Give it the same channels as the modules, or it
+resolves with the default channels and its version can differ from theirs.
 
-Additionaly call this in the configuration to publish to the eldonexus.
-This will preconfigure for main, master, dev and snapshot branches.
+Share the configuration through convention plugins. Keep the channels in one convention that the
+root applies too, so the root resolves exactly like the modules:
 
-```kt
-publishData {
-    // only if you want to publish to the eldonexus. If you call this you will not need to manually add repositories
-    useEldoNexusRepos()
+`buildSrc/build.gradle.kts`
+
+```kotlin
+plugins {
+    `kotlin-dsl`
+}
+
+repositories {
+    gradlePluginPortal()
+    maven("https://eldonexus.de/repository/maven-public/")
+}
+
+dependencies {
+    implementation("de.chojo:publishdata:2.0.0")
 }
 ```
 
-#### GitLab
-Additionaly call this in the configuration to publish to a gitlab repository and replace your repository declaration.
+`buildSrc/src/main/kotlin/versioning-conventions.gradle.kts`
 
-```kt
-publishData {
-    // only if you want to publish to the gitlab. If you call this you will not need to manually add repositories
-    useGitlabReposForProject("177", "https://gitlab.example.com/")
+```kotlin
+plugins {
+    id("de.chojo.publishdata")
 }
 
-publishing {
-    publications.create<MavenPublication>("maven") {
-        // configure the publication as defined previously.
-        publishData.configurePublication(this)
-    }
+publishData {
+    eldoNexus()
+}
+```
 
-    repositories {
-        maven {
-            credentials(HttpHeaderCredentials::class) {
-                name = "Job-Token"
-                value = System.getenv("CI_JOB_TOKEN")
-            }
-            authentication {
-                create("header", HttpHeaderAuthentication::class)
-            }
-            
-            name = "Gitlab"
-            // Get the detected repository from the publish data
-            url = uri(publishData.getRepository())
-        }
+`buildSrc/src/main/kotlin/publishing-conventions.gradle.kts`
+
+```kotlin
+plugins {
+    `java-library`
+    `maven-publish`
+    id("versioning-conventions")
+}
+
+publishData {
+    buildData {
+        fileName = "${project.name}.data"
     }
 }
 ```
+
+`build.gradle.kts` of the root
+
+```kotlin
+plugins {
+    id("versioning-conventions")
+}
+```
+
+`api/build.gradle.kts`
+
+```kotlin
+plugins {
+    id("publishing-conventions")
+}
+
+publishData {
+    artifactId = "myproject-api"
+}
+```
+
+Give the build data file a name per module when modules end up in one shaded jar; otherwise every
+module writes `build.data` and only one survives.
+
+## Migrating from 1.x
+
+| 1.x                                                       | 2.x                                                          |
+|-----------------------------------------------------------|--------------------------------------------------------------|
+| `version = "1.5.0"` in the build script                   | `version=1.5.0` in `gradle.properties` or `publishData.baseVersion` |
+| `useEldoNexusRepos()` / `useInternalEldoNexusRepos()`     | `eldoNexus()` / `eldoNexus(internal = true)`                 |
+| `main` / `master` publish releases                        | tags publish releases; `release { onTag().onBranch("main", "master") }` restores the old behaviour |
+| credentials in `publishing { repositories { … } }`        | `EldoNexusUsername` / `EldoNexusPassword` gradle properties, or `publishData { repository { … } }` |
+| `useGitlabReposForProject("177", url)`                    | `gitLab("177", url)`                                         |
+| `addMainRepo` / `addMasterRepo` / `addDevRepo` / `addSnapshotRepo` | `channels { release(…); dev(…); snapshot(…) }` |
+| `publishTask("jar")`                                      | `java` component is used by default; `artifact(tasks.named(…))` |
+| `publishComponent("java")`                                | `component = "java"`                                         |
+| `publishData.configurePublication(this)`                  | not needed                                                   |
+| `url = uri(publishData.getRepository())`                  | not needed                                                   |
+| `addBuildData(mapOf(…))`                                  | `buildData { put(…) }`                                       |
+| `publishData.getVersion()`                                | `project.version`, or `./gradlew -q printVersion` in CI      |
+| `-SNAPSHOT` / `-DEV` in `version`                         | still stripped, now with a warning; remove it                |
+| `PATREON=true` / `KOFI=true`                              | `BUILD_TYPE=PATREON` / `BUILD_TYPE=KOFI`                     |
+
+The CI publish task follows the repository name: with `eldoNexus()` it stays
+`publishAllPublicationsToEldoNexusRepository`.
