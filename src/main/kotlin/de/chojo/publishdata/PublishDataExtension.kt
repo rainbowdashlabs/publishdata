@@ -120,12 +120,7 @@ abstract class PublishDataExtension @Inject constructor(
         defaultRepositoryAction = Action { credentials(PasswordCredentials::class.java) }
         channels {
             release("https://eldonexus.de/repository/maven-releases$variant/")
-            if (dev) {
-                channel("dev", "https://eldonexus.de/repository/maven-dev$variant/") {
-                    onBranch(Regex("(?i)dev.*"))
-                    suffix("DEV")
-                }
-            }
+            if (dev) dev("https://eldonexus.de/repository/maven-dev$variant/")
             snapshot("https://eldonexus.de/repository/maven-snapshots$variant/")
         }
     }

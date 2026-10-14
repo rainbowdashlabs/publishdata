@@ -1,6 +1,7 @@
 package de.chojo.publishdata
 
 import de.chojo.publishdata.resolve.AnyRefMatcher
+import de.chojo.publishdata.resolve.BranchMatcher
 import de.chojo.publishdata.resolve.ChannelSpec
 import de.chojo.publishdata.resolve.TagMatcher
 import org.gradle.api.Action
@@ -30,6 +31,17 @@ abstract class Channels @Inject constructor(private val objects: ObjectFactory) 
     fun snapshot(repository: String? = null, action: Action<Channel> = Action {}): Channel =
         add(snapshotChannel(repository), action)
 
+    /**
+     * Adds the `dev` channel. Without matchers it applies to branches starting with `dev`, ignoring
+     * case, with suffix `DEV`.
+     */
+    @JvmOverloads
+    fun dev(repository: String? = null, action: Action<Channel> = Action {}): Channel =
+        add(
+            newChannel("dev").setup(repository, listOf(BranchMatcher(DEV_BRANCHES)), includeChangeRequests = true).suffix("DEV"),
+            action,
+        )
+
     /** Adds a channel named [name]. It applies to nothing until it gets a matcher. */
     @JvmOverloads
     fun channel(name: String, repository: String? = null, action: Action<Channel> = Action {}): Channel =
@@ -54,4 +66,8 @@ abstract class Channels @Inject constructor(private val objects: ObjectFactory) 
         newChannel("snapshot").setup(repository, listOf(AnyRefMatcher), includeChangeRequests = true).suffix("SNAPSHOT")
 
     private fun newChannel(name: String): Channel = objects.newInstance(Channel::class.java, name)
+
+    private companion object {
+        const val DEV_BRANCHES = "(?i)dev.*"
+    }
 }

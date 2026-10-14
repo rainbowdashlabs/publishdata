@@ -15,7 +15,7 @@ class ResolverTest {
 
     private val eldoNexusLike = channels {
         release("releases")
-        channel("dev", "dev") { onBranch(Regex("(?i)dev.*")).suffix("DEV") }
+        dev("dev")
         snapshot("snapshots")
     }.toSpecs()
 
@@ -144,5 +144,41 @@ class ResolverTest {
         val resolution = resolve(ci("feature"), base = null)
         assertThat(resolution.version).isEqualTo(Resolver.UNSPECIFIED)
         assertThat(resolution.hasVersion).isFalse()
+    }
+
+    @Test
+    fun `dev channel matches dev branches with suffix DEV`() {
+        val channels = channels { dev(); snapshot() }.toSpecs()
+        assertThat(resolve(ci("Dev/next"), channels).version).isEqualTo("1.5.0-DEV")
+        assertThat(resolve(ci("develop"), channels).channel).isEqualTo("dev")
+        assertThat(resolve(ci("feature"), channels).channel).isEqualTo("snapshot")
+    }
+
+    @Test
+    fun `channels behind a match-all channel are unreachable`() {
+        val channels = channels { snapshot(); release(); channel("empty") }.toSpecs()
+        assertThat(Resolver.unreachableChannels(channels).map { it.name }).containsExactly("release", "empty")
+    }
+
+    @Test
+    fun `channel without matchers is unreachable`() {
+        val channels = channels { release(); channel("empty"); snapshot() }.toSpecs()
+        assertThat(Resolver.unreachableChannels(channels).map { it.name }).containsExactly("empty")
+    }
+
+    @Test
+    fun `match-all channel without change requests leaves change requests reachable`() {
+        val channels = channels {
+            channel("all") { onAnyRef().excludeChangeRequests() }
+            channel("requests") { onAnyRef() }
+            release()
+        }.toSpecs()
+        assertThat(Resolver.unreachableChannels(channels).map { it.name }).containsExactly("release")
+    }
+
+    @Test
+    fun `presets have no unreachable channels`() {
+        assertThat(Resolver.unreachableChannels(eldoNexusLike)).isEmpty()
+        assertThat(Resolver.unreachableChannels(channels {}.toSpecs())).isEmpty()
     }
 }

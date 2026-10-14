@@ -105,8 +105,9 @@ order; the first match wins.
 publishData {
     channels {
         release("https://repo.example.com/releases")          // tags
-        channel("dev", "https://repo.example.com/dev") {
-            onBranch(Regex("(?i)dev.*")).suffix("DEV")
+        dev("https://repo.example.com/dev")                   // dev* branches, -DEV
+        channel("rc", "https://repo.example.com/rc") {        // a channel of your own
+            onBranch(Regex("release/.*")).suffix("RC")
         }
         snapshot("https://repo.example.com/snapshots")        // everything else, -SNAPSHOT
     }
@@ -128,9 +129,24 @@ Matchers and options of a channel:
 | `commitHash()`                | appends `+<short hash>`; length via `publishData.hashLength` (default 7)   |
 | `excludeChangeRequests()`     | pull and merge request builds skip this channel (default for `release`)    |
 
-`release` without matchers applies to tags; `snapshot` without matchers applies to every build.
-Without any channel, both apply without a repository, so the version is set even when nothing is
-published.
+`release` without matchers applies to tags, `dev` to branches starting with `dev` (any case) with
+suffix `DEV`, and `snapshot` to every build. The repository is optional for all of them, so a
+project can be versioned without publishing anywhere:
+
+```kotlin
+publishData {
+    channels {
+        release()
+        dev()
+        snapshot()
+    }
+}
+```
+
+Without any channel, `release` and `snapshot` apply without a repository.
+
+Order matters: a channel after one that matches every build, such as `snapshot`, is never used, and
+neither is a `channel(…)` without matchers. Both are reported as a warning.
 
 To release from branches as well, name them:
 
@@ -333,7 +349,7 @@ module writes `build.data` and only one survives.
 | `main` / `master` publish releases                        | tags publish releases; `release { onTag().onBranch("main", "master") }` restores the old behaviour |
 | credentials in `publishing { repositories { … } }`        | `EldoNexusUsername` / `EldoNexusPassword` gradle properties, or `publishData { repository { … } }` |
 | `useGitlabReposForProject("177", url)`                    | `gitLab("177", url)`                                         |
-| `addMainRepo` / `addMasterRepo` / `addDevRepo` / `addSnapshotRepo` | `channels { release(…); channel("dev", …); snapshot(…) }` |
+| `addMainRepo` / `addMasterRepo` / `addDevRepo` / `addSnapshotRepo` | `channels { release(…); dev(…); snapshot(…) }` |
 | `publishTask("jar")`                                      | `java` component is used by default; `artifact(tasks.named(…))` |
 | `publishComponent("java")`                                | `component = "java"`                                         |
 | `publishData.configurePublication(this)`                  | not needed                                                   |

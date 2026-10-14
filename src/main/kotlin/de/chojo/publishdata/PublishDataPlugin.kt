@@ -63,6 +63,7 @@ class PublishDataPlugin : Plugin<Project> {
             resolution.reason,
         )
         warnAboutBaseVersion(project, extension, resolution)
+        warnAboutUnreachableChannels(project, extension)
         warnIfVersionOverridden(project)
     }
 
@@ -80,6 +81,18 @@ class PublishDataPlugin : Plugin<Project> {
             project.path,
             cleaned,
         )
+    }
+
+    private fun warnAboutUnreachableChannels(project: Project, extension: PublishDataExtension) {
+        val channels = extension.channelSpecs()
+        Resolver.unreachableChannels(channels).forEach { channel ->
+            val reason = if (channel.matchers.isEmpty()) {
+                "it has no matcher"
+            } else {
+                "an earlier channel matches every build; channels are tried in order"
+            }
+            project.logger.warn("The PublishData channel '{}' of {} is never used: {}.", channel.name, project.path, reason)
+        }
     }
 
     private fun warnIfVersionOverridden(project: Project) {

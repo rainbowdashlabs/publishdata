@@ -360,6 +360,25 @@ class PublishDataPluginFunctionalTest {
     }
 
     @Test
+    fun `unreachable channels are reported`() {
+        writeBuild(
+            """
+            publishData {
+                channels {
+                    snapshot()
+                    release()
+                }
+            }
+            """
+        )
+        commit()
+        val result = run("testVersion")
+        assertThat(result.output).contains(
+            "The PublishData channel 'release' of : is never used: an earlier channel matches every build",
+        )
+    }
+
+    @Test
     fun `overriding the version in the build script is reported`() {
         writeBuild("version = \"9.9.9\"")
         commit()

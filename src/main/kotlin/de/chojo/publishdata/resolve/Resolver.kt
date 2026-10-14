@@ -73,6 +73,24 @@ object Resolver {
         )
     }
 
+    /**
+     * Returns the channels no build can reach: those without matchers, and those behind a channel
+     * that matches every build, unless they serve change requests the earlier channel excludes.
+     */
+    fun unreachableChannels(channels: List<ChannelSpec>): List<ChannelSpec> {
+        var catchesAllBuilds = false
+        var catchesAllButChangeRequests = false
+        return channels.filter { channel ->
+            val unreachable = channel.matchers.isEmpty() ||
+                catchesAllBuilds ||
+                (catchesAllButChangeRequests && !channel.includeChangeRequests)
+            if (AnyRefMatcher in channel.matchers) {
+                if (channel.includeChangeRequests) catchesAllBuilds = true else catchesAllButChangeRequests = true
+            }
+            unreachable
+        }
+    }
+
     private fun decorate(base: String, channel: ChannelSpec, branch: String?, commit: String?): String = buildString {
         append(base)
         if (channel.branchSuffix && branch != null && branch !in channel.branchSuffixExceptions) {
