@@ -1,6 +1,6 @@
 # PublishData
 
-![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/de.chojo.publishdata?style=for-the-badge&label=Plugin%20Portal)
+![Release](https://img.shields.io/nexus/maven-releases/de.chojo/publishdata?label=Release&server=https%3A%2F%2Feldonexus.de&style=for-the-badge)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/RainbowDashLabs/publishdata/verify.yml?style=for-the-badge&label=Building)
 
 A Gradle plugin that derives the version of your project from git and publishes every build to the
@@ -17,6 +17,19 @@ repository it belongs in.
 Requires Gradle 8.5 or newer.
 
 ## Quick start
+
+The plugin is hosted on the EldoNexus. Add it to the plugin repositories in `settings.gradle.kts`:
+
+```kotlin
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        maven("https://eldonexus.de/repository/maven-public/")
+    }
+}
+```
+
+Then in `build.gradle.kts`:
 
 ```kotlin
 plugins {
@@ -48,9 +61,6 @@ version=1.5.0
 `./gradlew publishChannel` now publishes `1.5.0-SNAPSHOT` from branches and the tagged version from
 tags.
 Without `channels`, the plugin only sets the version.
-
-The plugin is also available from `https://eldonexus.de/repository/maven-public/` for builds that
-do not use the Gradle Plugin Portal.
 
 ### Version
 
@@ -282,6 +292,9 @@ can have a repository and `publishToMavenCentral()` at once and then publishes t
   `publishData.groupId` / `artifactId` only apply to the publication PublishData creates itself.
 - Credentials and signing are configured as the plugin documents them (`mavenCentralUsername`,
   `signingInMemoryKey`, …); the snapshot repository takes them through `repository { }`.
+- With `signAllPublications()`, versions ending in `-SNAPSHOT` are published unsigned when no key
+  is configured; every other version needs the signing key, also outside Maven Central. A `dev`
+  channel (`1.5.0-DEV`) therefore needs the key on dev branches, `branchSuffix()` does not.
 - Release uploads to Maven Central do not support the configuration cache yet, a limitation of the
   plugin; snapshots do.
 - `publishToMavenCentral()` without the plugin is reported as a warning, and `publishChannel` fails
@@ -402,6 +415,7 @@ plugins {
 
 repositories {
     gradlePluginPortal()
+    maven("https://eldonexus.de/repository/maven-public/")
 }
 
 dependencies {
@@ -476,7 +490,7 @@ to builds that do not declare it, e.g. on a CI agent:
 
 ```kotlin
 initscript {
-    repositories { gradlePluginPortal() }
+    repositories { maven("https://eldonexus.de/repository/maven-public/") }
     dependencies { classpath("de.chojo:publishdata:2.0.0") }
 }
 
