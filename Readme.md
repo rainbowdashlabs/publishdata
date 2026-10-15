@@ -287,8 +287,62 @@ they all agree. Nothing is inherited between projects, except that `version` in 
 e.g. for aggregated javadoc or a root artifact. Give it the same channels as the modules, or it
 resolves with the default channels and its version can differ from theirs.
 
-Share the configuration through convention plugins. Keep the channels in one convention that the
-root applies too, so the root resolves exactly like the modules:
+### Settings plugin
+
+The simplest way to configure all projects at once is the settings plugin. It applies PublishData to
+every project, the root included, and configures each one before its build script runs:
+
+`settings.gradle.kts`
+
+```kotlin
+plugins {
+    id("de.chojo.publishdata.settings") version "2.0.0"
+}
+
+rootProject.name = "myproject"
+include("core", "api")
+
+publishData {
+    defaults {
+        channels {
+            release("https://repo.example.com/releases")
+            snapshot("https://repo.example.com/snapshots")
+        }
+        buildData()
+    }
+}
+```
+
+`api/build.gradle.kts`
+
+```kotlin
+plugins {
+    `java-library`
+    `maven-publish`
+    id("de.chojo.publishdata")
+}
+
+publishData {
+    artifactId = "myproject-api"
+}
+```
+
+A build script can add to the defaults or override them, e.g. with `channels { clear() }`. It may
+apply `de.chojo.publishdata` itself, but without a version: the plugin is already on the classpath.
+
+Gradle versions that do not generate accessors for settings extensions need the explicit form in
+`settings.gradle.kts`:
+
+```kotlin
+configure<de.chojo.publishdata.PublishDataSettings> {
+    defaults { … }
+}
+```
+
+### Convention plugins
+
+Without the settings plugin, share the configuration through convention plugins. Keep the channels
+in one convention that the root applies too, so the root resolves exactly like the modules:
 
 `buildSrc/build.gradle.kts`
 
@@ -365,6 +419,29 @@ publishData {
 
 Give the build data file a name per module when modules end up in one shaded jar; otherwise every
 module writes `build.data` and only one survives.
+
+## Init scripts
+
+An [init script](https://docs.gradle.org/current/userguide/init_scripts.html) can apply PublishData
+to builds that do not declare it, e.g. on a CI agent:
+
+```kotlin
+initscript {
+    repositories { gradlePluginPortal() }
+    dependencies { classpath("de.chojo:publishdata:2.0.0") }
+}
+
+gradle.beforeProject {
+    apply<de.chojo.publishdata.PublishDataPlugin>()
+    extensions.configure<de.chojo.publishdata.PublishDataExtension> {
+        buildData()
+    }
+}
+```
+
+Configure the plugin inside the init script: the build scripts cannot see its classes. Apply it
+either from the init script or from the build, not both: the init script loads its own copy of the
+plugin, two copies cannot share one project, and the build stops with an explanation.
 
 ## Migrating from 1.x
 

@@ -55,6 +55,14 @@ gradlePlugin {
                 "GitLab CI, Bitbucket Pipelines, Jenkins and locally, and can embed build information in the artifact."
             tags = listOf("versioning", "git", "release", "publishing", "maven", "ci")
         }
+        create("publishDataSettings") {
+            id = "de.chojo.publishdata.settings"
+            implementationClass = "de.chojo.publishdata.PublishDataSettingsPlugin"
+            displayName = "PublishData for settings"
+            description = "Applies de.chojo.publishdata to every project of a build and configures it once, " +
+                "in settings.gradle.kts."
+            tags = listOf("versioning", "git", "release", "publishing", "maven", "ci")
+        }
     }
 }
 

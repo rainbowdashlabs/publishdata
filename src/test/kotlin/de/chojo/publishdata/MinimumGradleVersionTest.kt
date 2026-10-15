@@ -19,10 +19,7 @@ class MinimumGradleVersionTest {
 
     @Test
     fun `plugin works on the minimum gradle version`() {
-        val javaHome = System.getenv("MIN_GRADLE_JAVA_HOME")
-            ?: System.getProperty("java.home").takeIf { Runtime.version().feature() <= 21 }
-        assumeTrue(javaHome != null, "no JDK 21 for Gradle $MINIMUM_GRADLE_VERSION, set MIN_GRADLE_JAVA_HOME")
-
+        val javaHome = javaHome()
         projectDir.resolve("settings.gradle.kts").writeText("""rootProject.name = "sample"""")
         projectDir.resolve("gradle.properties").writeText("version=1.5.0\norg.gradle.java.home=$javaHome\n")
         projectDir.resolve("build.gradle.kts").writeText(
@@ -51,24 +48,70 @@ class MinimumGradleVersionTest {
             """.trimIndent()
         )
 
-        val result = GradleRunner.create()
-            .withGradleVersion(MINIMUM_GRADLE_VERSION)
-            .withProjectDir(projectDir)
-            .withPluginClasspath()
-            .withArguments("printVersion", "publish", "--configuration-cache", "--stacktrace")
-            .withEnvironment(
-                mapOf(
-                    "PATH" to System.getenv("PATH"),
-                    "PUBLISHDATA_REF" to "feature/x",
-                    "PUBLISHDATA_COMMIT" to "0123456789abcdef",
-                    "CUSTOM" to "value",
-                )
-            )
-            .build()
+        val result = run("printVersion", "publish")
 
         assertThat(result.output).contains("1.5.0-feature-x-SNAPSHOT+012345678")
         assertThat(projectDir.resolve("repo/snapshots/de/chojo/sample/1.5.0-feature-x-SNAPSHOT+012345678")).isDirectory()
     }
+
+    /** Older Gradle versions generate no accessor for settings extensions, hence the explicit `configure`. */
+    @Test
+    fun `settings plugin works on the minimum gradle version`() {
+        projectDir.resolve("settings.gradle.kts").writeText(
+            """
+            plugins {
+                id("de.chojo.publishdata.settings")
+            }
+
+            rootProject.name = "sample"
+
+            configure<de.chojo.publishdata.PublishDataSettings> {
+                defaults {
+                    channels {
+                        snapshot(rootDir.resolve("repo/snapshots").toURI().toString())
+                    }
+                }
+            }
+            """.trimIndent()
+        )
+        projectDir.resolve("gradle.properties").writeText("version=1.5.0\norg.gradle.java.home=${javaHome()}\n")
+        projectDir.resolve("build.gradle.kts").writeText(
+            """
+            plugins {
+                `java-library`
+                `maven-publish`
+            }
+
+            group = "de.chojo"
+            """.trimIndent()
+        )
+
+        run("publish")
+
+        assertThat(projectDir.resolve("repo/snapshots/de/chojo/sample/1.5.0-SNAPSHOT")).isDirectory()
+    }
+
+    private fun javaHome(): String {
+        val javaHome = System.getenv("MIN_GRADLE_JAVA_HOME")
+            ?: System.getProperty("java.home").takeIf { Runtime.version().feature() <= 21 }
+        assumeTrue(javaHome != null, "no JDK 21 for Gradle $MINIMUM_GRADLE_VERSION, set MIN_GRADLE_JAVA_HOME")
+        return javaHome!!
+    }
+
+    private fun run(vararg tasks: String) = GradleRunner.create()
+        .withGradleVersion(MINIMUM_GRADLE_VERSION)
+        .withProjectDir(projectDir)
+        .withPluginClasspath()
+        .withArguments(*tasks, "--configuration-cache", "--stacktrace")
+        .withEnvironment(
+            mapOf(
+                "PATH" to System.getenv("PATH"),
+                "PUBLISHDATA_REF" to "feature/x",
+                "PUBLISHDATA_COMMIT" to "0123456789abcdef",
+                "CUSTOM" to "value",
+            )
+        )
+        .build()
 
     private companion object {
         const val MINIMUM_GRADLE_VERSION = "8.5"

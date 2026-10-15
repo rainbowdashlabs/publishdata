@@ -17,8 +17,9 @@ import org.gradle.api.tasks.SourceSetContainer
  */
 class PublishDataPlugin : Plugin<Project> {
     override fun apply(project: Project) {
+        failIfAppliedFromAnotherClassLoader(project)
         val extension = project.extensions.create(
-            "publishData",
+            EXTENSION,
             PublishDataExtension::class.java,
             { registerBuildData(project) },
         )
@@ -43,6 +44,19 @@ class PublishDataPlugin : Plugin<Project> {
             project.afterEvaluate { configurePublishing(project, extension) }
             failPublishingWithoutVersion(project, extension)
         }
+    }
+
+    /**
+     * Gradle applies a plugin class once per project, but an init script loads its own copy of the
+     * plugin. A second copy cannot share the extension, and the build script's `publishData` block
+     * is typed against only one of them, so the build stops with an explanation instead.
+     */
+    private fun failIfAppliedFromAnotherClassLoader(project: Project) {
+        if (project.extensions.findByName(EXTENSION) == null) return
+        throw GradleException(
+            "PublishData is applied to ${project.path} twice from different class loaders, " +
+                "usually by an init script and by the build itself. Apply it in one place only."
+        )
     }
 
     /**
@@ -195,6 +209,7 @@ class PublishDataPlugin : Plugin<Project> {
         project.rootProject.group.toString().ifBlank { project.group.toString() }
 
     private companion object {
+        const val EXTENSION = "publishData"
         const val NONE = "none"
         const val PRINT_VERSION = "printVersion"
         const val MISSING_VERSION =
