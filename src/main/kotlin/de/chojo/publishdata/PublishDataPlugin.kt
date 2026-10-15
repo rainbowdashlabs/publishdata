@@ -17,8 +17,9 @@ import org.gradle.api.tasks.SourceSetContainer
  */
 class PublishDataPlugin : Plugin<Project> {
     override fun apply(project: Project) {
+        failIfAppliedFromAnotherClassLoader(project)
         val extension = project.extensions.create(
-            "publishData",
+            EXTENSION,
             PublishDataExtension::class.java,
             { registerBuildData(project) },
         )
@@ -43,6 +44,19 @@ class PublishDataPlugin : Plugin<Project> {
             project.afterEvaluate { configurePublishing(project, extension) }
             failPublishingWithoutVersion(project, extension)
         }
+    }
+
+    /**
+     * Gradle applies a plugin class once per project, but an init script loads its own copy of the
+     * plugin. A second copy cannot share the extension, and the build script's `publishData` block
+     * is typed against only one of them, so the build stops with an explanation instead.
+     */
+    private fun failIfAppliedFromAnotherClassLoader(project: Project) {
+        if (project.extensions.findByName(EXTENSION) == null) return
+        throw GradleException(
+            "PublishData is applied to ${project.path} twice from different class loaders, " +
+                "usually by an init script and by the build itself. Apply it in one place only."
+        )
     }
 
     /**
@@ -160,12 +174,43 @@ class PublishDataPlugin : Plugin<Project> {
     private fun configurePublishing(project: Project, extension: PublishDataExtension) {
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
         if (shouldCreatePublication(project, extension, publishing)) createPublication(project, extension, publishing)
-        val repository = extension.resolution.get().repository ?: return
-        publishing.repositories.maven {
-            name = extension.repositoryName.get()
-            setUrl(repository)
-            if (extension.repositoryActions.isEmpty()) extension.defaultRepositoryAction?.execute(this)
-            extension.repositoryActions.forEach { it.execute(this) }
+        val resolution = extension.resolution.get()
+        resolution.repository?.let { repository ->
+            publishing.repositories.maven {
+                name = extension.repositoryName.get()
+                setUrl(repository)
+                if (extension.repositoryActions.isEmpty()) extension.defaultRepositoryAction?.execute(this)
+                extension.repositoryActions.forEach { it.execute(this) }
+            }
+        }
+        registerPublishChannel(project, extension, resolution)
+    }
+
+    /**
+     * Registers `publishChannel`, which publishes to exactly the targets of the resolved channel: its
+     * repository and, through `com.vanniktech.maven.publish`, Maven Central. Unlike `publish`, it
+     * never reaches repositories other plugins registered, such as vanniktech's Central repository
+     * on a branch build.
+     */
+    private fun registerPublishChannel(project: Project, extension: PublishDataExtension, resolution: Resolution) {
+        val centralAvailable = project.pluginManager.hasPlugin(VANNIKTECH_PUBLISH)
+        if (resolution.mavenCentral && !centralAvailable) {
+            project.logger.warn(MISSING_VANNIKTECH, resolution.channel, project.path)
+        }
+        val repositoryTask = resolution.repository?.let { "publishAllPublicationsTo${extension.repositoryName.get()}Repository" }
+        val path = project.path
+        project.tasks.register(PUBLISH_CHANNEL) {
+            group = "publishing"
+            description = "Publishes to the repositories of the release channel resolved by PublishData."
+            repositoryTask?.let { dependsOn(it) }
+            if (resolution.mavenCentral && centralAvailable) dependsOn(MAVEN_CENTRAL_TASK)
+            val missingCentral = resolution.mavenCentral && !centralAvailable
+            val nothingToPublish = repositoryTask == null && !resolution.mavenCentral
+            val channel = resolution.channel
+            doLast {
+                if (missingCentral) throw GradleException(MISSING_VANNIKTECH.replaceFirst("{}", channel).replaceFirst("{}", path))
+                if (nothingToPublish) logger.lifecycle("The channel '{}' of {} publishes nowhere.", channel, path)
+            }
         }
     }
 
@@ -175,7 +220,8 @@ class PublishDataPlugin : Plugin<Project> {
         publishing: PublishingExtension,
     ): Boolean = extension.autoPublication.get() &&
         publishing.publications.isEmpty() &&
-        !project.pluginManager.hasPlugin("java-gradle-plugin")
+        !project.pluginManager.hasPlugin("java-gradle-plugin") &&
+        !project.pluginManager.hasPlugin(VANNIKTECH_PUBLISH)
 
     private fun createPublication(project: Project, extension: PublishDataExtension, publishing: PublishingExtension) {
         val component = extension.component.orNull?.let(project.components::findByName)
@@ -195,6 +241,12 @@ class PublishDataPlugin : Plugin<Project> {
         project.rootProject.group.toString().ifBlank { project.group.toString() }
 
     private companion object {
+        const val EXTENSION = "publishData"
+        const val PUBLISH_CHANNEL = "publishChannel"
+        const val VANNIKTECH_PUBLISH = "com.vanniktech.maven.publish"
+        const val MAVEN_CENTRAL_TASK = "publishToMavenCentral"
+        const val MISSING_VANNIKTECH =
+            "The PublishData channel '{}' of {} publishes to Maven Central, which requires the plugin '$VANNIKTECH_PUBLISH'."
         const val NONE = "none"
         const val PRINT_VERSION = "printVersion"
         const val MISSING_VERSION =

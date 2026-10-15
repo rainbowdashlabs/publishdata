@@ -379,6 +379,169 @@ class PublishDataPluginFunctionalTest {
     }
 
     @Test
+    fun `plugin applied by an init script versions an unmodified build`() {
+        projectDir.resolve("build.gradle.kts").writeText("plugins { `java-library` }")
+        commit()
+        writeInitScript()
+        val result = run("printVersion", "processResources", "-q", "-I", "init.gradle.kts", "--configuration-cache")
+        assertThat(result.output.trim()).isEqualTo("1.5.0-SNAPSHOT")
+        assertThat(projectDir.resolve("build/resources/main/build.data")).exists()
+    }
+
+    @Test
+    fun `plugin applied by an init script and the build fails with an explanation`() {
+        writeInitScript()
+        projectDir.resolve("build.gradle.kts").writeText(
+            """
+            buildscript {
+                dependencies { classpath(files(${pluginClasspath(copyTo = projectDir.resolve("other-version"))})) }
+            }
+
+            apply(plugin = "de.chojo.publishdata")
+            """.trimIndent()
+        )
+        val result = runner("help", "-I", "init.gradle.kts", injectPlugin = false).buildAndFail()
+        assertThat(result.output).contains("PublishData is applied to : twice from different class loaders")
+    }
+
+    @Test
+    fun `settings plugin configures every project`() {
+        projectDir.resolve("settings.gradle.kts").writeText(
+            """
+            plugins {
+                id("de.chojo.publishdata.settings")
+            }
+
+            rootProject.name = "Multi"
+            include("core", "api")
+
+            publishData {
+                defaults {
+                    channels {
+                        release(rootDir.resolve("repo/releases").toURI().toString())
+                        snapshot(rootDir.resolve("repo/snapshots").toURI().toString())
+                    }
+                    buildData()
+                }
+            }
+            """.trimIndent()
+        )
+        projectDir.resolve("build.gradle.kts").writeText(
+            """
+            group = "de.chojo"
+
+            allprojects {
+                tasks.register("testVersion") {
+                    val line = project.path + "=" + project.version
+                    doLast { println("VERSION " + line) }
+                }
+            }
+            """.trimIndent()
+        )
+        projectDir.resolve("core").mkdirs()
+        projectDir.resolve("core/build.gradle.kts").writeText(
+            """
+            plugins {
+                `java-library`
+                `maven-publish`
+            }
+            """.trimIndent()
+        )
+        projectDir.resolve("api").mkdirs()
+        projectDir.resolve("api/build.gradle.kts").writeText(
+            """
+            plugins {
+                `java-library`
+                `maven-publish`
+                id("de.chojo.publishdata")
+            }
+
+            publishData {
+                artifactId = "multi-api"
+            }
+            """.trimIndent()
+        )
+        commit()
+        git("tag", "v2.0.0")
+
+        val result = run("testVersion", "publish", "--configuration-cache", env = mapOf("PUBLIC_BUILD" to "true"))
+
+        val versions = result.output.lines().filter { it.startsWith("VERSION ") }.map { it.removePrefix("VERSION ") }
+        assertThat(versions).containsExactlyInAnyOrder(":=2.0.0", ":core=2.0.0", ":api=2.0.0")
+        assertThat(projectDir.resolve("repo/releases/de/chojo/core/2.0.0/core-2.0.0.jar")).exists()
+        assertThat(projectDir.resolve("repo/releases/de/chojo/multi-api/2.0.0/multi-api-2.0.0.jar")).exists()
+        assertThat(projectDir.resolve("core/build/resources/main/build.data")).exists()
+    }
+
+    @Test
+    fun `tags go to maven central and branches to the snapshot repository with vanniktech`() {
+        writeVanniktechBuild()
+        commit()
+
+        val branch = run("publishChannel", env = mapOf("PUBLISHDATA_REF" to "feature/x"))
+        assertThat(branch.task(":publishAllPublicationsToPublishDataRepository")?.outcome?.name).isEqualTo("SUCCESS")
+        assertThat(branch.task(":publishToMavenCentral")).isNull()
+        assertThat(projectDir.resolve("repo/snapshots/de/chojo/Sample/1.5.0-SNAPSHOT")).isDirectory()
+
+        val tag = run("publishChannel", "--dry-run", env = mapOf("PUBLISHDATA_REF" to "refs/tags/v2.0.0"))
+        assertThat(tag.output).contains(":publishToMavenCentral SKIPPED")
+        assertThat(tag.output).doesNotContain("PublishDataRepository")
+    }
+
+    @Test
+    fun `publish channel with vanniktech works with the configuration cache on branches`() {
+        writeVanniktechBuild()
+        commit()
+        val env = mapOf("PUBLISHDATA_REF" to "feature/x")
+        run("publishChannel", "--configuration-cache", env = env)
+        assertThat(run("publishChannel", "--configuration-cache", env = env).output).contains("Reusing configuration cache.")
+    }
+
+    @Test
+    fun `maven central without vanniktech fails only publishChannel`() {
+        writeBuild(
+            """
+            publishData {
+                channels {
+                    release { publishToMavenCentral() }
+                }
+            }
+            """
+        )
+        commit()
+        val env = mapOf("PUBLISHDATA_REF" to "refs/tags/v2.0.0")
+        val build = run("build", env = env)
+        assertThat(build.output).contains("requires the plugin 'com.vanniktech.maven.publish'")
+        val publish = runner("publishChannel", env = env).buildAndFail()
+        assertThat(publish.output).contains("requires the plugin 'com.vanniktech.maven.publish'")
+    }
+
+    private fun writeVanniktechBuild() {
+        projectDir.resolve("build.gradle.kts").writeText(
+            """
+            plugins {
+                `java-library`
+                id("com.vanniktech.maven.publish") version "0.34.0"
+                id("de.chojo.publishdata")
+            }
+
+            group = "de.chojo"
+
+            mavenPublishing {
+                publishToMavenCentral()
+            }
+
+            publishData {
+                channels {
+                    release { publishToMavenCentral() }
+                    snapshot(uri("repo/snapshots").toString())
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
+    @Test
     fun `overriding the version in the build script is reported`() {
         writeBuild("version = \"9.9.9\"")
         commit()
@@ -408,6 +571,41 @@ class PublishDataPluginFunctionalTest {
         )
     }
 
+    /**
+     * The plugin under test as a classpath literal for build scripts. With [copyTo], the files are
+     * copied first, so the classpath differs from the original like a different plugin version would.
+     */
+    private fun pluginClasspath(copyTo: File? = null): String {
+        val metadata = Properties().apply {
+            PublishDataPluginFunctionalTest::class.java.classLoader
+                .getResourceAsStream("plugin-under-test-metadata.properties")!!
+                .use(::load)
+        }
+        return metadata.getProperty("implementation-classpath")
+            .split(File.pathSeparator)
+            .mapIndexed { index, path ->
+                copyTo?.resolve(index.toString())?.takeIf { File(path).exists() }?.also { File(path).copyRecursively(it) }?.path ?: path
+            }
+            .joinToString(", ") { "\"${it.replace("\\", "/")}\"" }
+    }
+
+    private fun writeInitScript() {
+        projectDir.resolve("init.gradle.kts").writeText(
+            """
+            initscript {
+                dependencies { classpath(files(${pluginClasspath()})) }
+            }
+
+            gradle.beforeProject {
+                apply<de.chojo.publishdata.PublishDataPlugin>()
+                extensions.configure<de.chojo.publishdata.PublishDataExtension> {
+                    buildData()
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
     private fun commit() {
         git("add", "-A")
         git("commit", "-q", "--allow-empty", "-m", "change")
@@ -419,10 +617,14 @@ class PublishDataPluginFunctionalTest {
     private fun run(vararg args: String, env: Map<String, String> = emptyMap()): BuildResult =
         runner(*args, env = env).build()
 
-    private fun runner(vararg args: String, env: Map<String, String> = emptyMap()): GradleRunner =
+    private fun runner(
+        vararg args: String,
+        env: Map<String, String> = emptyMap(),
+        injectPlugin: Boolean = true,
+    ): GradleRunner =
         GradleRunner.create()
             .withProjectDir(projectDir)
-            .withPluginClasspath()
+            .apply { if (injectPlugin) withPluginClasspath() }
             .withArguments(*args, "--stacktrace")
             .withEnvironment(cleanEnvironment() + env)
 

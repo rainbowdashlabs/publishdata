@@ -1,31 +1,22 @@
+# PublishData
+
+![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/de.chojo.publishdata?style=for-the-badge&label=Plugin%20Portal)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/RainbowDashLabs/publishdata/verify.yml?style=for-the-badge&label=Building)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/RainbowDashLabs/publishdata/publish_to_nexus.yml?style=for-the-badge&label=Publishing) \
-![Sonatype Nexus (Releases)](https://img.shields.io/nexus/maven-releases/de.chojo/publishdata?label=Release&logo=Release&server=https%3A%2F%2Feldonexus.de&style=for-the-badge)
-![Sonatype Nexus (Development)](https://img.shields.io/nexus/maven-dev/de.chojo/publishdata?label=DEV&logo=Release&server=https%3A%2F%2Feldonexus.de&style=for-the-badge)
-![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/de.chojo/publishdata?color=orange&label=Snapshot&server=https%3A%2F%2Feldonexus.de&style=for-the-badge)
 
+A Gradle plugin that derives the version of your project from git and publishes every build to the
+repository it belongs in.
 
-Small Gradle plugin that sets the version of a build from where it runs — release tag, dev branch,
-feature branch or local machine — injects build data into the artifact, and wires `maven-publish`
-to the matching repository.
+- Tag `v1.4.0` and the build is version `1.4.0`, published as a release. No version bump commit needed.
+- Push a branch and it becomes `1.5.0-SNAPSHOT`, published to your snapshot repository, or
+  `1.5.0-feature-x-SNAPSHOT` if branches should not overwrite each other.
+- Works on GitHub Actions, GitLab CI, Bitbucket Pipelines, Jenkins and any other CI, and locally
+  without ever producing a release by accident.
+- Optionally embeds build information (version, commit, branch, build time) into the artifact.
+- Sets up `maven-publish` for you and supports the configuration cache.
 
 Requires Gradle 8.5 or newer.
 
-## Setup
-
-The plugin is published to the Gradle Plugin Portal and to the EldoNexus. For the EldoNexus, add
-it to the plugin repositories in `settings.gradle.kts`:
-
-```kotlin
-pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        maven("https://eldonexus.de/repository/maven-public/")
-    }
-}
-```
-
-### build.gradle.kts
+## Quick start
 
 ```kotlin
 plugins {
@@ -33,7 +24,33 @@ plugins {
     `maven-publish`
     id("de.chojo.publishdata") version "2.0.0"
 }
+
+publishData {
+    channels {
+        release("https://repo.example.com/releases")
+        snapshot("https://repo.example.com/snapshots")
+    }
+    repository {
+        credentials {
+            username = System.getenv("REPO_USER")
+            password = System.getenv("REPO_PASSWORD")
+        }
+    }
+}
 ```
+
+with the next version in `gradle.properties`:
+
+```properties
+version=1.5.0
+```
+
+`./gradlew publishChannel` now publishes `1.5.0-SNAPSHOT` from branches and the tagged version from
+tags.
+Without `channels`, the plugin only sets the version.
+
+The plugin is also available from `https://eldonexus.de/repository/maven-public/` for builds that
+do not use the Gradle Plugin Portal.
 
 ### Version
 
@@ -164,13 +181,15 @@ ending; `commitHash()` does not, so use it only with repositories that accept an
 
 #### Presets
 
+Ready-made channels for some hosts:
+
 ```kotlin
 publishData {
-    eldoNexus()                     // release (tags), dev (dev* branches, -DEV), snapshot
-    eldoNexus(internal = true)      // the internal EldoNexus repositories
-    eldoNexus(dev = false)          // without the dev channel
     gitLab(projectId = "177")       // release and snapshot to the project's package registry
     gitLab("177", "https://gitlab.example.com/")
+    eldoNexus()                     // eldonexus.de: release (tags), dev (dev* branches, -DEV), snapshot
+    eldoNexus(internal = true)      // its internal repositories
+    eldoNexus(dev = false)          // without the dev channel
 }
 ```
 
@@ -181,7 +200,9 @@ When `maven-publish` is applied, the plugin
 - creates a publication `maven` from the `java` component, unless the project declares a publication
   itself or uses `java-gradle-plugin`,
 - registers a Maven repository with the URL of the resolved channel, named `PublishData`
-  (`EldoNexus` / `GitLab` with the presets).
+  (`EldoNexus` / `GitLab` with the presets),
+- registers `publishChannel`, which publishes to the targets of the resolved channel and nowhere
+  else. Run it in CI on every push.
 
 The presets bring their credentials:
 
@@ -219,6 +240,52 @@ publishData {
     repositoryName = "MyRepo"
 }
 ```
+
+#### Maven Central
+
+Channels can publish to Maven Central through
+[gradle-maven-publish-plugin](https://vanniktech.github.io/gradle-maven-publish-plugin/central/)
+0.34.0 or newer. Apply and configure it as usual; PublishData sets the version and routes each
+build:
+
+```kotlin
+plugins {
+    `java-library`
+    id("com.vanniktech.maven.publish") version "0.34.0"
+    id("de.chojo.publishdata") version "2.0.0"
+}
+
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+    pom { … }
+}
+
+publishData {
+    channels {
+        release { publishToMavenCentral() }                  // tags to Maven Central
+        snapshot("https://repo.example.com/snapshots")       // branches to your snapshot repository
+    }
+}
+```
+
+```
+./gradlew publishChannel
+```
+
+runs `publishToMavenCentral` on a tag and publishes to the snapshot repository otherwise. A channel
+can have a repository and `publishToMavenCentral()` at once and then publishes to both.
+
+- Use `publishChannel`, not `publish`: the plugin registers its own Central repository, and `publish`
+  would upload branch builds there as well.
+- The publication and its coordinates come from the plugin, set them with its `coordinates(…)`.
+  `publishData.groupId` / `artifactId` only apply to the publication PublishData creates itself.
+- Credentials and signing are configured as the plugin documents them (`mavenCentralUsername`,
+  `signingInMemoryKey`, …); the snapshot repository takes them through `repository { }`.
+- Release uploads to Maven Central do not support the configuration cache yet, a limitation of the
+  plugin; snapshots do.
+- `publishToMavenCentral()` without the plugin is reported as a warning, and `publishChannel` fails
+  on the builds that would go to Maven Central.
 
 The resolution is available for anything else:
 
@@ -269,8 +336,62 @@ they all agree. Nothing is inherited between projects, except that `version` in 
 e.g. for aggregated javadoc or a root artifact. Give it the same channels as the modules, or it
 resolves with the default channels and its version can differ from theirs.
 
-Share the configuration through convention plugins. Keep the channels in one convention that the
-root applies too, so the root resolves exactly like the modules:
+### Settings plugin
+
+The simplest way to configure all projects at once is the settings plugin. It applies PublishData to
+every project, the root included, and configures each one before its build script runs:
+
+`settings.gradle.kts`
+
+```kotlin
+plugins {
+    id("de.chojo.publishdata.settings") version "2.0.0"
+}
+
+rootProject.name = "myproject"
+include("core", "api")
+
+publishData {
+    defaults {
+        channels {
+            release("https://repo.example.com/releases")
+            snapshot("https://repo.example.com/snapshots")
+        }
+        buildData()
+    }
+}
+```
+
+`api/build.gradle.kts`
+
+```kotlin
+plugins {
+    `java-library`
+    `maven-publish`
+    id("de.chojo.publishdata")
+}
+
+publishData {
+    artifactId = "myproject-api"
+}
+```
+
+A build script can add to the defaults or override them, e.g. with `channels { clear() }`. It may
+apply `de.chojo.publishdata` itself, but without a version: the plugin is already on the classpath.
+
+Gradle versions that do not generate accessors for settings extensions need the explicit form in
+`settings.gradle.kts`:
+
+```kotlin
+configure<de.chojo.publishdata.PublishDataSettings> {
+    defaults { … }
+}
+```
+
+### Convention plugins
+
+Without the settings plugin, share the configuration through convention plugins. Keep the channels
+in one convention that the root applies too, so the root resolves exactly like the modules:
 
 `buildSrc/build.gradle.kts`
 
@@ -281,7 +402,6 @@ plugins {
 
 repositories {
     gradlePluginPortal()
-    maven("https://eldonexus.de/repository/maven-public/")
 }
 
 dependencies {
@@ -297,7 +417,10 @@ plugins {
 }
 
 publishData {
-    eldoNexus()
+    channels {
+        release("https://repo.example.com/releases")
+        snapshot("https://repo.example.com/snapshots")
+    }
 }
 ```
 
@@ -313,6 +436,12 @@ plugins {
 publishData {
     buildData {
         fileName = "${project.name}.data"
+    }
+    repository {
+        credentials {
+            username = System.getenv("REPO_USER")
+            password = System.getenv("REPO_PASSWORD")
+        }
     }
 }
 ```
@@ -339,6 +468,29 @@ publishData {
 
 Give the build data file a name per module when modules end up in one shaded jar; otherwise every
 module writes `build.data` and only one survives.
+
+## Init scripts
+
+An [init script](https://docs.gradle.org/current/userguide/init_scripts.html) can apply PublishData
+to builds that do not declare it, e.g. on a CI agent:
+
+```kotlin
+initscript {
+    repositories { gradlePluginPortal() }
+    dependencies { classpath("de.chojo:publishdata:2.0.0") }
+}
+
+gradle.beforeProject {
+    apply<de.chojo.publishdata.PublishDataPlugin>()
+    extensions.configure<de.chojo.publishdata.PublishDataExtension> {
+        buildData()
+    }
+}
+```
+
+Configure the plugin inside the init script: the build scripts cannot see its classes. Apply it
+either from the init script or from the build, not both: the init script loads its own copy of the
+plugin, two copies cannot share one project, and the build stops with an explanation.
 
 ## Migrating from 1.x
 

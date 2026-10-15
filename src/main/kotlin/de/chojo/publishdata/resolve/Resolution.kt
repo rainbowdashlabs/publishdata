@@ -9,6 +9,7 @@ import java.io.Serializable
  * @property channel name of the selected channel, [Resolver.NO_CHANNEL] when none matched
  * @property version the version of the build
  * @property repository the repository to publish to, null when the channel has none
+ * @property mavenCentral whether the build is published to Maven Central
  * @property branch the built branch, if any
  * @property tag the tag the version was taken from, if any
  * @property commit the shortened commit hash, if known
@@ -20,6 +21,7 @@ data class Resolution(
     val channel: String,
     val version: String,
     val repository: String?,
+    val mavenCentral: Boolean,
     val branch: String?,
     val tag: String?,
     val commit: String?,
