@@ -50,9 +50,10 @@ gradlePlugin {
             id = "de.chojo.publishdata"
             implementationClass = "de.chojo.publishdata.PublishDataPlugin"
             displayName = "PublishData"
-            description = "Sets the project version from git tags and branches, adds build data to the artifact " +
-                "and publishes to the repository of the matching release channel."
-            tags = listOf("versioning", "git", "publishing", "maven", "release")
+            description = "Derives the project version from git tags and branches and publishes each build to " +
+                "the right Maven repository: tags as releases, branches as snapshots. Works on GitHub Actions, " +
+                "GitLab CI, Bitbucket Pipelines, Jenkins and locally, and can embed build information in the artifact."
+            tags = listOf("versioning", "git", "release", "publishing", "maven", "ci")
         }
     }
 }

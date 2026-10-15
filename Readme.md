@@ -1,31 +1,22 @@
+# PublishData
+
+![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/de.chojo.publishdata?style=for-the-badge&label=Plugin%20Portal)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/RainbowDashLabs/publishdata/verify.yml?style=for-the-badge&label=Building)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/RainbowDashLabs/publishdata/publish_to_nexus.yml?style=for-the-badge&label=Publishing) \
-![Sonatype Nexus (Releases)](https://img.shields.io/nexus/maven-releases/de.chojo/publishdata?label=Release&logo=Release&server=https%3A%2F%2Feldonexus.de&style=for-the-badge)
-![Sonatype Nexus (Development)](https://img.shields.io/nexus/maven-dev/de.chojo/publishdata?label=DEV&logo=Release&server=https%3A%2F%2Feldonexus.de&style=for-the-badge)
-![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/de.chojo/publishdata?color=orange&label=Snapshot&server=https%3A%2F%2Feldonexus.de&style=for-the-badge)
 
+A Gradle plugin that derives the version of your project from git and publishes every build to the
+repository it belongs in.
 
-Small Gradle plugin that sets the version of a build from where it runs — release tag, dev branch,
-feature branch or local machine — injects build data into the artifact, and wires `maven-publish`
-to the matching repository.
+- Tag `v1.4.0` and the build is version `1.4.0`, published as a release. No version bump commit needed.
+- Push a branch and it becomes `1.5.0-SNAPSHOT`, published to your snapshot repository, or
+  `1.5.0-feature-x-SNAPSHOT` if branches should not overwrite each other.
+- Works on GitHub Actions, GitLab CI, Bitbucket Pipelines, Jenkins and any other CI, and locally
+  without ever producing a release by accident.
+- Optionally embeds build information (version, commit, branch, build time) into the artifact.
+- Sets up `maven-publish` for you and supports the configuration cache.
 
 Requires Gradle 8.5 or newer.
 
-## Setup
-
-The plugin is published to the Gradle Plugin Portal and to the EldoNexus. For the EldoNexus, add
-it to the plugin repositories in `settings.gradle.kts`:
-
-```kotlin
-pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        maven("https://eldonexus.de/repository/maven-public/")
-    }
-}
-```
-
-### build.gradle.kts
+## Quick start
 
 ```kotlin
 plugins {
@@ -33,7 +24,32 @@ plugins {
     `maven-publish`
     id("de.chojo.publishdata") version "2.0.0"
 }
+
+publishData {
+    channels {
+        release("https://repo.example.com/releases")
+        snapshot("https://repo.example.com/snapshots")
+    }
+    repository {
+        credentials {
+            username = System.getenv("REPO_USER")
+            password = System.getenv("REPO_PASSWORD")
+        }
+    }
+}
 ```
+
+with the next version in `gradle.properties`:
+
+```properties
+version=1.5.0
+```
+
+`./gradlew publish` now publishes `1.5.0-SNAPSHOT` from branches and the tagged version from tags.
+Without `channels`, the plugin only sets the version.
+
+The plugin is also available from `https://eldonexus.de/repository/maven-public/` for builds that
+do not use the Gradle Plugin Portal.
 
 ### Version
 
@@ -164,13 +180,15 @@ ending; `commitHash()` does not, so use it only with repositories that accept an
 
 #### Presets
 
+Ready-made channels for some hosts:
+
 ```kotlin
 publishData {
-    eldoNexus()                     // release (tags), dev (dev* branches, -DEV), snapshot
-    eldoNexus(internal = true)      // the internal EldoNexus repositories
-    eldoNexus(dev = false)          // without the dev channel
     gitLab(projectId = "177")       // release and snapshot to the project's package registry
     gitLab("177", "https://gitlab.example.com/")
+    eldoNexus()                     // eldonexus.de: release (tags), dev (dev* branches, -DEV), snapshot
+    eldoNexus(internal = true)      // its internal repositories
+    eldoNexus(dev = false)          // without the dev channel
 }
 ```
 
@@ -281,7 +299,6 @@ plugins {
 
 repositories {
     gradlePluginPortal()
-    maven("https://eldonexus.de/repository/maven-public/")
 }
 
 dependencies {
@@ -297,7 +314,10 @@ plugins {
 }
 
 publishData {
-    eldoNexus()
+    channels {
+        release("https://repo.example.com/releases")
+        snapshot("https://repo.example.com/snapshots")
+    }
 }
 ```
 
@@ -313,6 +333,12 @@ plugins {
 publishData {
     buildData {
         fileName = "${project.name}.data"
+    }
+    repository {
+        credentials {
+            username = System.getenv("REPO_USER")
+            password = System.getenv("REPO_PASSWORD")
+        }
     }
 }
 ```
