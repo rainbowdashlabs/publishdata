@@ -45,7 +45,8 @@ with the next version in `gradle.properties`:
 version=1.5.0
 ```
 
-`./gradlew publish` now publishes `1.5.0-SNAPSHOT` from branches and the tagged version from tags.
+`./gradlew publishChannel` now publishes `1.5.0-SNAPSHOT` from branches and the tagged version from
+tags.
 Without `channels`, the plugin only sets the version.
 
 The plugin is also available from `https://eldonexus.de/repository/maven-public/` for builds that
@@ -199,7 +200,9 @@ When `maven-publish` is applied, the plugin
 - creates a publication `maven` from the `java` component, unless the project declares a publication
   itself or uses `java-gradle-plugin`,
 - registers a Maven repository with the URL of the resolved channel, named `PublishData`
-  (`EldoNexus` / `GitLab` with the presets).
+  (`EldoNexus` / `GitLab` with the presets),
+- registers `publishChannel`, which publishes to the targets of the resolved channel and nowhere
+  else. Run it in CI on every push.
 
 The presets bring their credentials:
 
@@ -237,6 +240,52 @@ publishData {
     repositoryName = "MyRepo"
 }
 ```
+
+#### Maven Central
+
+Channels can publish to Maven Central through
+[gradle-maven-publish-plugin](https://vanniktech.github.io/gradle-maven-publish-plugin/central/)
+0.34.0 or newer. Apply and configure it as usual; PublishData sets the version and routes each
+build:
+
+```kotlin
+plugins {
+    `java-library`
+    id("com.vanniktech.maven.publish") version "0.34.0"
+    id("de.chojo.publishdata") version "2.0.0"
+}
+
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+    pom { … }
+}
+
+publishData {
+    channels {
+        release { publishToMavenCentral() }                  // tags to Maven Central
+        snapshot("https://repo.example.com/snapshots")       // branches to your snapshot repository
+    }
+}
+```
+
+```
+./gradlew publishChannel
+```
+
+runs `publishToMavenCentral` on a tag and publishes to the snapshot repository otherwise. A channel
+can have a repository and `publishToMavenCentral()` at once and then publishes to both.
+
+- Use `publishChannel`, not `publish`: the plugin registers its own Central repository, and `publish`
+  would upload branch builds there as well.
+- The publication and its coordinates come from the plugin, set them with its `coordinates(…)`.
+  `publishData.groupId` / `artifactId` only apply to the publication PublishData creates itself.
+- Credentials and signing are configured as the plugin documents them (`mavenCentralUsername`,
+  `signingInMemoryKey`, …); the snapshot repository takes them through `repository { }`.
+- Release uploads to Maven Central do not support the configuration cache yet, a limitation of the
+  plugin; snapshots do.
+- `publishToMavenCentral()` without the plugin is reported as a warning, and `publishChannel` fails
+  on the builds that would go to Maven Central.
 
 The resolution is available for anything else:
 

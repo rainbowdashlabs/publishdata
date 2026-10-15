@@ -91,6 +91,39 @@ class MinimumGradleVersionTest {
         assertThat(projectDir.resolve("repo/snapshots/de/chojo/sample/1.5.0-SNAPSHOT")).isDirectory()
     }
 
+    /** Before Gradle 8.8 vanniktech creates its publication late, after PublishData has looked. */
+    @Test
+    fun `vanniktech integration works on the minimum gradle version`() {
+        projectDir.resolve("settings.gradle.kts").writeText("""rootProject.name = "sample"""")
+        projectDir.resolve("gradle.properties").writeText("version=1.5.0\norg.gradle.java.home=${javaHome()}\n")
+        projectDir.resolve("build.gradle.kts").writeText(
+            """
+            plugins {
+                `java-library`
+                id("com.vanniktech.maven.publish") version "0.34.0"
+                id("de.chojo.publishdata")
+            }
+
+            group = "de.chojo"
+
+            mavenPublishing {
+                publishToMavenCentral()
+            }
+
+            publishData {
+                channels {
+                    release { publishToMavenCentral() }
+                    snapshot(uri("repo/snapshots").toString())
+                }
+            }
+            """.trimIndent()
+        )
+
+        run("publishChannel")
+
+        assertThat(projectDir.resolve("repo/snapshots/de/chojo/sample/1.5.0-SNAPSHOT")).isDirectory()
+    }
+
     private fun javaHome(): String {
         val javaHome = System.getenv("MIN_GRADLE_JAVA_HOME")
             ?: System.getProperty("java.home").takeIf { Runtime.version().feature() <= 21 }

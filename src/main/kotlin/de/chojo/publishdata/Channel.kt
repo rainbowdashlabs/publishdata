@@ -20,6 +20,7 @@ abstract class Channel @Inject constructor(val name: String) {
     private val matchers = mutableListOf<RefMatcher>()
     private var suffix = ""
     private var commitHash = false
+    private var mavenCentral = false
     private var branchSuffix = false
     private var branchSuffixExceptions = emptyList<String>()
 
@@ -63,6 +64,14 @@ abstract class Channel @Inject constructor(val name: String) {
     /** Keeps pull and merge request builds out of this channel. */
     fun excludeChangeRequests(): Channel = apply { includeChangeRequests = false }
 
+    /**
+     * Publishes the builds of this channel to Maven Central, in addition to the channel's repository
+     * if it has one. Requires the plugin `com.vanniktech.maven.publish`, which is configured as
+     * usual in its `mavenPublishing` block; the `publishChannel` task runs its
+     * `publishToMavenCentral`.
+     */
+    fun publishToMavenCentral(): Channel = apply { mavenCentral = true }
+
     internal fun setup(repository: String?, defaultMatchers: List<RefMatcher>, includeChangeRequests: Boolean): Channel =
         apply {
             this.repository = repository
@@ -78,6 +87,7 @@ abstract class Channel @Inject constructor(val name: String) {
         branchSuffix = branchSuffix,
         branchSuffixExceptions = branchSuffixExceptions,
         repository = repository,
+        mavenCentral = mavenCentral,
         includeChangeRequests = includeChangeRequests,
     )
 }

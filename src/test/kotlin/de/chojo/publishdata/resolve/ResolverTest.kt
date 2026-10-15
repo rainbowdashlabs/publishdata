@@ -181,4 +181,15 @@ class ResolverTest {
         assertThat(Resolver.unreachableChannels(eldoNexusLike)).isEmpty()
         assertThat(Resolver.unreachableChannels(channels {}.toSpecs())).isEmpty()
     }
+
+    @Test
+    fun `maven central target is carried into the resolution`() {
+        val channels = channels { release { publishToMavenCentral() }; snapshot("snapshots") }.toSpecs()
+        val release = resolve(ci(null, "v1.0.0"), channels)
+        assertThat(release.mavenCentral).isTrue()
+        assertThat(release.repository).isNull()
+        val snapshot = resolve(ci("feature"), channels)
+        assertThat(snapshot.mavenCentral).isFalse()
+        assertThat(snapshot.repository).isEqualTo("snapshots")
+    }
 }

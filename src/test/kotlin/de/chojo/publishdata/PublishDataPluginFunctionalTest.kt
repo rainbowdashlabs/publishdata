@@ -474,6 +474,74 @@ class PublishDataPluginFunctionalTest {
     }
 
     @Test
+    fun `tags go to maven central and branches to the snapshot repository with vanniktech`() {
+        writeVanniktechBuild()
+        commit()
+
+        val branch = run("publishChannel", env = mapOf("PUBLISHDATA_REF" to "feature/x"))
+        assertThat(branch.task(":publishAllPublicationsToPublishDataRepository")?.outcome?.name).isEqualTo("SUCCESS")
+        assertThat(branch.task(":publishToMavenCentral")).isNull()
+        assertThat(projectDir.resolve("repo/snapshots/de/chojo/Sample/1.5.0-SNAPSHOT")).isDirectory()
+
+        val tag = run("publishChannel", "--dry-run", env = mapOf("PUBLISHDATA_REF" to "refs/tags/v2.0.0"))
+        assertThat(tag.output).contains(":publishToMavenCentral SKIPPED")
+        assertThat(tag.output).doesNotContain("PublishDataRepository")
+    }
+
+    @Test
+    fun `publish channel with vanniktech works with the configuration cache on branches`() {
+        writeVanniktechBuild()
+        commit()
+        val env = mapOf("PUBLISHDATA_REF" to "feature/x")
+        run("publishChannel", "--configuration-cache", env = env)
+        assertThat(run("publishChannel", "--configuration-cache", env = env).output).contains("Reusing configuration cache.")
+    }
+
+    @Test
+    fun `maven central without vanniktech fails only publishChannel`() {
+        writeBuild(
+            """
+            publishData {
+                channels {
+                    release { publishToMavenCentral() }
+                }
+            }
+            """
+        )
+        commit()
+        val env = mapOf("PUBLISHDATA_REF" to "refs/tags/v2.0.0")
+        val build = run("build", env = env)
+        assertThat(build.output).contains("requires the plugin 'com.vanniktech.maven.publish'")
+        val publish = runner("publishChannel", env = env).buildAndFail()
+        assertThat(publish.output).contains("requires the plugin 'com.vanniktech.maven.publish'")
+    }
+
+    private fun writeVanniktechBuild() {
+        projectDir.resolve("build.gradle.kts").writeText(
+            """
+            plugins {
+                `java-library`
+                id("com.vanniktech.maven.publish") version "0.34.0"
+                id("de.chojo.publishdata")
+            }
+
+            group = "de.chojo"
+
+            mavenPublishing {
+                publishToMavenCentral()
+            }
+
+            publishData {
+                channels {
+                    release { publishToMavenCentral() }
+                    snapshot(uri("repo/snapshots").toString())
+                }
+            }
+            """.trimIndent()
+        )
+    }
+
+    @Test
     fun `overriding the version in the build script is reported`() {
         writeBuild("version = \"9.9.9\"")
         commit()

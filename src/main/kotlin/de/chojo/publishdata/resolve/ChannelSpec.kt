@@ -12,7 +12,8 @@ import java.io.Serializable
  * @property branchSuffix inserts the sanitised branch name before [suffix], except for the branches
  * in [branchSuffixExceptions] and for builds without a public branch
  * @property branchSuffixExceptions branches that never get a branch suffix
- * @property repository the repository to publish to, or null to publish nowhere
+ * @property repository the repository to publish to, or null
+ * @property mavenCentral publishes to Maven Central through `com.vanniktech.maven.publish`
  * @property includeChangeRequests whether pull and merge request builds may use this channel
  */
 data class ChannelSpec(
@@ -23,5 +24,6 @@ data class ChannelSpec(
     val branchSuffix: Boolean,
     val branchSuffixExceptions: List<String>,
     val repository: String?,
+    val mavenCentral: Boolean,
     val includeChangeRequests: Boolean,
 ) : Serializable
