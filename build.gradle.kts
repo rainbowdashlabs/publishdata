@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "de.chojo"
-version = releaseVersion("2.0.0")
+version = releaseVersion("2.1.0")
 
 repositories {
     mavenCentral()
@@ -31,6 +31,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation("org.yaml:snakeyaml:2.6")
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.assertj:assertj-core:3.27.7")
@@ -61,6 +62,15 @@ gradlePlugin {
             description = "Applies de.chojo.publishdata to every project of a build and configures it once, " +
                 "in settings.gradle.kts."
             tags = listOf("versioning", "git", "release", "publishing", "maven", "ci")
+        }
+        create("pluginManifest") {
+            id = "de.chojo.publishdata.manifest"
+            implementationClass = "de.chojo.publishdata.manifest.PluginManifestPlugin"
+            displayName = "PublishData plugin manifest"
+            description = "Publishes a JSON manifest beside a Minecraft plugin's jar: supported Minecraft versions, " +
+                "platforms, Java version and dependencies with links to Modrinth, SpigotMC and Hangar. Read from " +
+                "plugin.yml or paper-plugin.yml and refined in the build script."
+            tags = listOf("minecraft", "paper", "spigot", "plugin", "manifest", "publishing")
         }
     }
 }
