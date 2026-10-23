@@ -89,9 +89,9 @@ abstract class Channels
                 .setup(repository, listOf(TagMatcher(TagMatcher.DEFAULT_PATTERN)), includeChangeRequests = false)
 
         private fun snapshotChannel(repository: String?) =
-            newChannel(
-                "snapshot",
-            ).setup(repository, listOf(AnyRefMatcher), includeChangeRequests = true).suffix("SNAPSHOT")
+            newChannel("snapshot")
+                .setup(repository, listOf(AnyRefMatcher), includeChangeRequests = true)
+                .suffix("SNAPSHOT")
 
         private fun newChannel(name: String): Channel = objects.newInstance(Channel::class.java, name)
 

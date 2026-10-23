@@ -65,15 +65,9 @@ data class BranchMatcher(
         private val SPECIAL = Regex("""[\\^$.|?*+()\[\]{}]""")
 
         /** Matches exactly one of [names]. */
-        fun anyOf(vararg names: String) =
-            BranchMatcher(
-                names.joinToString("|") {
-                    SPECIAL.replace(it) { m ->
-                        "\\" +
-                            m.value
-                    }
-                },
-            )
+        fun anyOf(vararg names: String) = BranchMatcher(names.joinToString("|", transform = ::escape))
+
+        private fun escape(name: String) = SPECIAL.replace(name) { "\\" + it.value }
     }
 }
 

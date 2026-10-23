@@ -186,9 +186,9 @@ class PublishDataPlugin : Plugin<Project> {
                 entries.putAll(
                     extension.resolution
                         .zip(extension.artifactId) { resolution, artifact -> resolution to artifact }
-                        .zip(
-                            buildType.orElse(""),
-                        ) { (resolution, artifact), type -> builtInEntries(resolution, type, artifact) },
+                        .zip(buildType.orElse("")) { (resolution, artifact), type ->
+                            builtInEntries(resolution, type, artifact)
+                        },
                 )
                 entries.putAll(extension.buildData.entries)
             }
