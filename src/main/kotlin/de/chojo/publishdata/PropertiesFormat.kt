@@ -20,7 +20,7 @@ internal object PropertiesFormat {
                 char == '\r' -> append("\\r")
                 char == '\t' -> append("\\t")
                 char == '\u000c' -> append("\\f")
-                isKey && (char in "=:" || index == 0 && char in "#!") -> append('\\').append(char)
+                isKey && (char in "=:" || (index == 0 && char in "#!")) -> append('\\').append(char)
                 char == ' ' && (isKey || index == 0) -> append("\\ ")
                 char < ' ' || char > '~' -> append("\\u%04x".format(char.code))
                 else -> append(char)

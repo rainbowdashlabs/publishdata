@@ -42,7 +42,8 @@ object Resolver {
         val subject = if (context.public) context else context.copy(branch = LOCAL_BRANCH, tags = emptyList())
         val commit = context.commit?.take(hashLength)
         val base = baseVersion?.let(::cleanBaseVersion)?.takeIf { it.isNotBlank() && it != UNSPECIFIED }
-        val visibility = if (context.public) "" else "local build without PUBLIC_BUILD, matched as branch '$LOCAL_BRANCH': "
+        val visibility =
+            if (context.public) "" else "local build without PUBLIC_BUILD, matched as branch '$LOCAL_BRANCH': "
         for (channel in channels) {
             if (subject.changeRequest && !channel.includeChangeRequests) continue
             val match = channel.matchers.firstNotNullOfOrNull { it.match(subject) } ?: continue

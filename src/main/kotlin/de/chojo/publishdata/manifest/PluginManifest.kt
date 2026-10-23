@@ -52,7 +52,11 @@ data class PluginManifest(
             val dependencies = (descriptor?.dependencies ?: emptyList()).toMutableList()
             for (dependency in declared.dependencies) {
                 val index = dependencies.indexOfFirst { it.name.equals(dependency.name, ignoreCase = true) }
-                if (index < 0) dependencies += dependency else dependencies[index] = dependencies[index].refinedBy(dependency)
+                if (index < 0) {
+                    dependencies += dependency
+                } else {
+                    dependencies[index] = dependencies[index].refinedBy(dependency)
+                }
             }
             return PluginManifest(
                 name = declared.name ?: descriptor?.name,

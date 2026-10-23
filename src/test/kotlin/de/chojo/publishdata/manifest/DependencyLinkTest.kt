@@ -12,7 +12,9 @@ class DependencyLinkTest {
         assertThat(DependencyLink.spigot(6245))
             .isEqualTo(DependencyLink("spigot", "6245", "https://www.spigotmc.org/resources/6245/"))
         assertThat(DependencyLink.hangar("HelpChat/PlaceholderAPI"))
-            .isEqualTo(DependencyLink("hangar", "HelpChat/PlaceholderAPI", "https://hangar.papermc.io/HelpChat/PlaceholderAPI"))
+            .isEqualTo(
+                DependencyLink("hangar", "HelpChat/PlaceholderAPI", "https://hangar.papermc.io/HelpChat/PlaceholderAPI"),
+            )
         assertThat(DependencyLink.url("https://github.com/MilkBowl/Vault"))
             .isEqualTo(DependencyLink("url", null, "https://github.com/MilkBowl/Vault"))
     }

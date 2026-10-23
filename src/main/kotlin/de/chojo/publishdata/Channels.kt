@@ -38,7 +38,9 @@ abstract class Channels @Inject constructor(private val objects: ObjectFactory) 
     @JvmOverloads
     fun dev(repository: String? = null, action: Action<Channel> = Action {}): Channel =
         add(
-            newChannel("dev").setup(repository, listOf(BranchMatcher(DEV_BRANCHES)), includeChangeRequests = true).suffix("DEV"),
+            newChannel("dev")
+                .setup(repository, listOf(BranchMatcher(DEV_BRANCHES)), includeChangeRequests = true)
+                .suffix("DEV"),
             action,
         )
 
@@ -60,7 +62,8 @@ abstract class Channels @Inject constructor(private val objects: ObjectFactory) 
     }
 
     private fun releaseChannel(repository: String?) =
-        newChannel("release").setup(repository, listOf(TagMatcher(TagMatcher.DEFAULT_PATTERN)), includeChangeRequests = false)
+        newChannel("release")
+            .setup(repository, listOf(TagMatcher(TagMatcher.DEFAULT_PATTERN)), includeChangeRequests = false)
 
     private fun snapshotChannel(repository: String?) =
         newChannel("snapshot").setup(repository, listOf(AnyRefMatcher), includeChangeRequests = true).suffix("SNAPSHOT")
