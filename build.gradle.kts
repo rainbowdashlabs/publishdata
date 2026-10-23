@@ -86,6 +86,34 @@ publishing {
             }
         }
     }
+    publications.withType<MavenPublication>().configureEach {
+        pom {
+            name = "PublishData"
+            description = "Derives the project version from git tags and branches and publishes each build to " +
+                "the right Maven repository."
+            url = "https://github.com/rainbowdashlabs/publishdata"
+            inceptionYear = "2021"
+            licenses {
+                license {
+                    name = "LGPL-3.0-or-later"
+                    url = "https://www.gnu.org/licenses/lgpl-3.0.html"
+                }
+            }
+            developers {
+                developer {
+                    id = "rainbowdashlabs"
+                    name = "Nora Fülling"
+                    email = "mail@chojo.dev"
+                    url = "https://github.com/rainbowdashlabs"
+                }
+            }
+            scm {
+                url = "https://github.com/rainbowdashlabs/publishdata"
+                connection = "scm:git:git://github.com/rainbowdashlabs/publishdata.git"
+                developerConnection = "scm:git:ssh://github.com/rainbowdashlabs/publishdata.git"
+            }
+        }
+    }
 }
 
 /**
