@@ -1,4 +1,5 @@
 [versions]
+publishdata = "2.1.0"
 spotless = "8.10.4"
 ktlint = "1.8.0"
 snakeyaml = "2.7"
@@ -13,4 +14,5 @@ junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 [plugins]
+publishdata = { id = "de.chojo.publishdata", version.ref = "publishdata" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

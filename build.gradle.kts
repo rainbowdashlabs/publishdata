@@ -3,11 +3,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     `kotlin-dsl`
     `maven-publish`
+    alias(libs.plugins.publishdata)
     alias(libs.plugins.spotless)
 }
-
-group = "de.chojo"
-version = releaseVersion("2.1.0")
 
 repositories {
     mavenCentral()
@@ -43,7 +41,7 @@ tasks.test {
 }
 
 gradlePlugin {
-    website = "https://github.com/rainbowdashlabs/publishdata"
+    website = "https://docs.chojo.dev/publishdata"
     vcsUrl = "https://github.com/rainbowdashlabs/publishdata"
     plugins {
         create("publishData") {
@@ -75,17 +73,11 @@ gradlePlugin {
     }
 }
 
+publishData {
+    eldoNexus(dev = false)
+}
+
 publishing {
-    repositories {
-        maven {
-            name = "EldoNexus"
-            url = uri(releaseRepository())
-            credentials(PasswordCredentials::class) {
-                username = System.getenv("NEXUS_USERNAME")
-                password = System.getenv("NEXUS_PASSWORD")
-            }
-        }
-    }
     publications.withType<MavenPublication>().configureEach {
         pom {
             name = "PublishData"
@@ -113,30 +105,6 @@ publishing {
                 developerConnection = "scm:git:ssh://github.com/rainbowdashlabs/publishdata.git"
             }
         }
-    }
-}
-
-/**
- * Derives the version of this plugin from the GitHub Actions ref: a tag is the release version,
- * branches get a channel suffix on top of [baseVersion]. Mirrors the plugin's `eldoNexus()` preset,
- * which the plugin cannot apply to itself.
- */
-fun releaseVersion(baseVersion: String): String {
-    val refName = System.getenv("GITHUB_REF_NAME") ?: return "$baseVersion-SNAPSHOT"
-    return when {
-        System.getenv("GITHUB_REF_TYPE") == "tag" -> refName.removePrefix("v")
-        refName.startsWith("dev") -> "$baseVersion-DEV"
-        else -> "$baseVersion-SNAPSHOT"
-    }
-}
-
-/** Selects the EldoNexus repository matching [releaseVersion]. */
-fun releaseRepository(): String {
-    val version = project.version.toString()
-    return when {
-        version.endsWith("-SNAPSHOT") -> "https://eldonexus.de/repository/maven-snapshots/"
-        version.endsWith("-DEV") -> "https://eldonexus.de/repository/maven-dev/"
-        else -> "https://eldonexus.de/repository/maven-releases/"
     }
 }
 
