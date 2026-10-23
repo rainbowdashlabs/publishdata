@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     `kotlin-dsl`
     `maven-publish`
+    alias(libs.plugins.spotless)
 }
 
 group = "de.chojo"
@@ -137,5 +138,17 @@ fun releaseRepository(): String {
         version.endsWith("-SNAPSHOT") -> "https://eldonexus.de/repository/maven-snapshots/"
         version.endsWith("-DEV") -> "https://eldonexus.de/repository/maven-dev/"
         else -> "https://eldonexus.de/repository/maven-releases/"
+    }
+}
+
+spotless {
+    kotlin {
+        target("src/**/*.kt")
+        licenseHeaderFile(rootProject.file("HEADER.txt"))
+        ktlint(libs.versions.ktlint.get())
+    }
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint(libs.versions.ktlint.get())
     }
 }
