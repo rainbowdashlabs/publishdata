@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.manifest
 
 /**
@@ -5,16 +11,23 @@ package de.chojo.publishdata.manifest
  * an absent field and an unknown one read the same.
  */
 internal object ManifestJson {
-    fun write(value: Any?, indent: String = ""): String = when (value) {
-        null -> "null"
-        is String -> quote(value)
-        is Number, is Boolean -> value.toString()
-        is Map<*, *> -> obj(value, indent)
-        is Iterable<*> -> array(value.toList(), indent)
-        else -> quote(value.toString())
-    }
+    fun write(
+        value: Any?,
+        indent: String = "",
+    ): String =
+        when (value) {
+            null -> "null"
+            is String -> quote(value)
+            is Number, is Boolean -> value.toString()
+            is Map<*, *> -> obj(value, indent)
+            is Iterable<*> -> array(value.toList(), indent)
+            else -> quote(value.toString())
+        }
 
-    private fun obj(map: Map<*, *>, indent: String): String {
+    private fun obj(
+        map: Map<*, *>,
+        indent: String,
+    ): String {
         val entries = map.filterValues { it != null }
         if (entries.isEmpty()) return "{}"
         val inner = "$indent  "
@@ -23,24 +36,28 @@ internal object ManifestJson {
         }
     }
 
-    private fun array(items: List<*>, indent: String): String {
+    private fun array(
+        items: List<*>,
+        indent: String,
+    ): String {
         if (items.isEmpty()) return "[]"
         val inner = "$indent  "
         return items.joinToString(",\n", "[\n", "\n$indent]") { "$inner${write(it, inner)}" }
     }
 
-    private fun quote(text: String): String = buildString {
-        append('"')
-        for (char in text) {
-            when (char) {
-                '"' -> append("\\\"")
-                '\\' -> append("\\\\")
-                '\n' -> append("\\n")
-                '\r' -> append("\\r")
-                '\t' -> append("\\t")
-                else -> if (char < ' ') append("\\u%04x".format(char.code)) else append(char)
+    private fun quote(text: String): String =
+        buildString {
+            append('"')
+            for (char in text) {
+                when (char) {
+                    '"' -> append("\\\"")
+                    '\\' -> append("\\\\")
+                    '\n' -> append("\\n")
+                    '\r' -> append("\\r")
+                    '\t' -> append("\\t")
+                    else -> if (char < ' ') append("\\u%04x".format(char.code)) else append(char)
+                }
             }
+            append('"')
         }
-        append('"')
-    }
 }

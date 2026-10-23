@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.manifest
 
 import org.yaml.snakeyaml.LoaderOptions
@@ -28,11 +34,12 @@ data class PluginDescriptor(
             val paper = files.firstOrNull { it.name == "paper-plugin.yml" && it.isFile }?.let(::load)
             if (bukkit == null && paper == null) return null
             val primary = paper ?: bukkit!!
-            val platforms = buildList {
-                if (bukkit != null) add("bukkit")
-                if (paper != null) add("paper")
-                if (listOfNotNull(bukkit, paper).any { it["folia-supported"] == true }) add("folia")
-            }
+            val platforms =
+                buildList {
+                    if (bukkit != null) add("bukkit")
+                    if (paper != null) add("paper")
+                    if (listOfNotNull(bukkit, paper).any { it["folia-supported"] == true }) add("folia")
+                }
             return PluginDescriptor(
                 name = primary["name"]?.toString(),
                 apiVersion = primary["api-version"]?.toString(),

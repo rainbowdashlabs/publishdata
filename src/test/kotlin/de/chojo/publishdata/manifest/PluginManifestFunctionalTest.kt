@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.manifest
 
 import org.assertj.core.api.Assertions.assertThat
@@ -24,11 +30,14 @@ class PluginManifestFunctionalTest {
             api-version: '1.20'
             depend: [Vault]
             softdepend: [PlaceholderAPI]
-            """.trimIndent()
+            """.trimIndent(),
         )
     }
 
-    private fun writeBuild(plugins: String, body: String) {
+    private fun writeBuild(
+        plugins: String,
+        body: String,
+    ) {
         projectDir.resolve("build.gradle.kts").writeText(
             """
             plugins {
@@ -51,11 +60,12 @@ class PluginManifestFunctionalTest {
             }
 
             $body
-            """.trimIndent()
+            """.trimIndent(),
         )
     }
 
-    private val manifestBlock = """
+    private val manifestBlock =
+        """
         pluginManifest {
             minecraft("1.20.4", "1.21.4")
             optional("PlaceholderAPI", min = "2.11.0") {
@@ -68,7 +78,7 @@ class PluginManifestFunctionalTest {
             }
             put("discord", "https://discord.gg/x")
         }
-    """.trimIndent()
+        """.trimIndent()
 
     @Test
     fun `the manifest is published beside the jar with the manifest classifier`() {
@@ -146,7 +156,7 @@ class PluginManifestFunctionalTest {
               }
             }
 
-            """.trimIndent()
+            """.trimIndent(),
         )
         assertThat(projectDir.resolve("repo/de/chojo/sample/1.4.0/sample-1.4.0.pom").readText())
             .doesNotContain("manifest")
@@ -289,9 +299,15 @@ class PluginManifestFunctionalTest {
     private fun run(vararg args: String): BuildResult = runner(*args).build()
 
     private fun runner(vararg args: String): GradleRunner =
-        GradleRunner.create()
+        GradleRunner
+            .create()
             .withProjectDir(projectDir)
             .withPluginClasspath()
             .withArguments(*args, "--stacktrace")
-            .withEnvironment(System.getenv().filterKeys { !it.startsWith("GITHUB_") && !it.startsWith("CI") && it != "PUBLIC_BUILD" })
+            .withEnvironment(
+                System.getenv().filterKeys {
+                    !it.startsWith("GITHUB_") && !it.startsWith("CI") &&
+                        it != "PUBLIC_BUILD"
+                },
+            )
 }

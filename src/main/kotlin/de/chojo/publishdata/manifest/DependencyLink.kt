@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.manifest
 
 import java.io.Serializable
@@ -8,7 +14,11 @@ import java.net.URISyntaxException
  * Where a dependency is found. [url] is always written, so a reader that does not know [type] can
  * still follow it; the shortcut types carry the [id] the address was built from.
  */
-data class DependencyLink(val type: String, val id: String?, val url: String) : Serializable {
+data class DependencyLink(
+    val type: String,
+    val id: String?,
+    val url: String,
+) : Serializable {
     companion object {
         private const val serialVersionUID = 1L
         private val SLUG = Regex("[A-Za-z0-9_.-]+")
@@ -34,11 +44,12 @@ data class DependencyLink(val type: String, val id: String?, val url: String) : 
 
         /** Any http or https address. */
         fun url(address: String): DependencyLink {
-            val uri = try {
-                URI(address)
-            } catch (e: URISyntaxException) {
-                throw IllegalArgumentException("'$address' is not an address", e)
-            }
+            val uri =
+                try {
+                    URI(address)
+                } catch (e: URISyntaxException) {
+                    throw IllegalArgumentException("'$address' is not an address", e)
+                }
             require(uri.scheme in setOf("http", "https") && !uri.host.isNullOrBlank()) {
                 "'$address' is not an http or https address"
             }

@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.resolve
 
 import de.chojo.publishdata.git.GitContext
@@ -38,7 +44,12 @@ object Resolver {
      * [cleanBaseVersion]
      * @param hashLength the length commit hashes are shortened to
      */
-    fun resolve(context: GitContext, channels: List<ChannelSpec>, baseVersion: String?, hashLength: Int): Resolution {
+    fun resolve(
+        context: GitContext,
+        channels: List<ChannelSpec>,
+        baseVersion: String?,
+        hashLength: Int,
+    ): Resolution {
         val subject = if (context.public) context else context.copy(branch = LOCAL_BRANCH, tags = emptyList())
         val commit = context.commit?.take(hashLength)
         val base = baseVersion?.let(::cleanBaseVersion)?.takeIf { it.isNotBlank() && it != UNSPECIFIED }
@@ -84,9 +95,10 @@ object Resolver {
         var catchesAllBuilds = false
         var catchesAllButChangeRequests = false
         return channels.filter { channel ->
-            val unreachable = channel.matchers.isEmpty() ||
-                catchesAllBuilds ||
-                (catchesAllButChangeRequests && !channel.includeChangeRequests)
+            val unreachable =
+                channel.matchers.isEmpty() ||
+                    catchesAllBuilds ||
+                    (catchesAllButChangeRequests && !channel.includeChangeRequests)
             if (AnyRefMatcher in channel.matchers) {
                 if (channel.includeChangeRequests) catchesAllBuilds = true else catchesAllButChangeRequests = true
             }
@@ -94,18 +106,25 @@ object Resolver {
         }
     }
 
-    private fun decorate(base: String, channel: ChannelSpec, branch: String?, commit: String?): String = buildString {
-        append(base)
-        if (channel.branchSuffix && branch != null && branch !in channel.branchSuffixExceptions) {
-            append('-').append(branch.replace(BRANCH_SUFFIX_CHARACTERS, "-").trim('-'))
+    private fun decorate(
+        base: String,
+        channel: ChannelSpec,
+        branch: String?,
+        commit: String?,
+    ): String =
+        buildString {
+            append(base)
+            if (channel.branchSuffix && branch != null && branch !in channel.branchSuffixExceptions) {
+                append('-').append(branch.replace(BRANCH_SUFFIX_CHARACTERS, "-").trim('-'))
+            }
+            if (channel.suffix.isNotBlank()) append('-').append(channel.suffix)
+            if (channel.commitHash && commit != null) append('+').append(commit)
         }
-        if (channel.suffix.isNotBlank()) append('-').append(channel.suffix)
-        if (channel.commitHash && commit != null) append('+').append(commit)
-    }
 
-    private fun describe(context: GitContext): String = buildList {
-        context.branch?.let { add("branch '$it'") }
-        if (context.tags.isNotEmpty()) add("tags ${context.tags}")
-        if (context.changeRequest) add("as a change request")
-    }.ifEmpty { listOf("a build without branch or tag") }.joinToString(", ")
+    private fun describe(context: GitContext): String =
+        buildList {
+            context.branch?.let { add("branch '$it'") }
+            if (context.tags.isNotEmpty()) add("tags ${context.tags}")
+            if (context.changeRequest) add("as a change request")
+        }.ifEmpty { listOf("a build without branch or tag") }.joinToString(", ")
 }

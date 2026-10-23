@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.git
 
 /**
@@ -69,22 +75,44 @@ internal object CiEnvironment {
         val tag = env("TAG_NAME").nonBlank()
         val changeBranch = env("CHANGE_BRANCH").nonBlank()
         return when {
-            tag != null -> tagBuild(tag, commit, Ci.JENKINS)
-            changeBranch != null -> branchBuild(changeBranch, commit, Ci.JENKINS, changeRequest = true)
-            else -> branchBuild(
-                env("BRANCH_NAME").nonBlank() ?: env("GIT_BRANCH").nonBlank()?.substringAfter('/'),
-                commit,
-                Ci.JENKINS,
-                changeRequest = false,
-            )
+            tag != null -> {
+                tagBuild(tag, commit, Ci.JENKINS)
+            }
+
+            changeBranch != null -> {
+                branchBuild(changeBranch, commit, Ci.JENKINS, changeRequest = true)
+            }
+
+            else -> {
+                branchBuild(
+                    env("BRANCH_NAME").nonBlank() ?: env("GIT_BRANCH").nonBlank()?.substringAfter('/'),
+                    commit,
+                    Ci.JENKINS,
+                    changeRequest = false,
+                )
+            }
         }
     }
 
-    private fun tagBuild(tag: String, commit: String?, ci: Ci) =
-        GitContext(branch = null, tags = listOf(tag), commit = commit, ci = ci, changeRequest = false, public = true)
+    private fun tagBuild(
+        tag: String,
+        commit: String?,
+        ci: Ci,
+    ) = GitContext(branch = null, tags = listOf(tag), commit = commit, ci = ci, changeRequest = false, public = true)
 
-    private fun branchBuild(branch: String?, commit: String?, ci: Ci, changeRequest: Boolean) =
-        GitContext(branch = branch, tags = emptyList(), commit = commit, ci = ci, changeRequest = changeRequest, public = true)
+    private fun branchBuild(
+        branch: String?,
+        commit: String?,
+        ci: Ci,
+        changeRequest: Boolean,
+    ) = GitContext(
+        branch = branch,
+        tags = emptyList(),
+        commit = commit,
+        ci = ci,
+        changeRequest = changeRequest,
+        public = true,
+    )
 
     private fun String?.nonBlank(): String? = this?.takeIf { it.isNotBlank() }
 }

@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata
 
 import de.chojo.publishdata.git.GitContextSource
@@ -18,22 +24,30 @@ import org.gradle.api.tasks.SourceSetContainer
 class PublishDataPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         failIfAppliedFromAnotherClassLoader(project)
-        val extension = project.extensions.create(
-            EXTENSION,
-            PublishDataExtension::class.java,
-            { registerBuildData(project) },
-        )
+        val extension =
+            project.extensions.create(
+                EXTENSION,
+                PublishDataExtension::class.java,
+                { registerBuildData(project) },
+            )
         extension.baseVersion.convention(project.providers.gradleProperty("version"))
         extension.groupId.convention(project.provider { defaultGroupId(project) })
         extension.artifactId.convention(project.name.lowercase())
 
-        val gitContext = project.providers.of(GitContextSource::class.java) {
-            parameters.workingDirectory.set(project.layout.projectDirectory)
-        }
-        extension.resolution = gitContext.map { context ->
-            extension.frozenResolution
-                ?: Resolver.resolve(context, extension.channelSpecs(), extension.baseVersion.orNull, extension.hashLength.get())
-        }
+        val gitContext =
+            project.providers.of(GitContextSource::class.java) {
+                parameters.workingDirectory.set(project.layout.projectDirectory)
+            }
+        extension.resolution =
+            gitContext.map { context ->
+                extension.frozenResolution
+                    ?: Resolver.resolve(
+                        context,
+                        extension.channelSpecs(),
+                        extension.baseVersion.orNull,
+                        extension.hashLength.get(),
+                    )
+            }
         project.version = LazyVersion(extension.resolution.map(Resolution::version))
 
         project.afterEvaluate {
@@ -55,7 +69,7 @@ class PublishDataPlugin : Plugin<Project> {
         if (project.extensions.findByName(EXTENSION) == null) return
         throw GradleException(
             "PublishData is applied to ${project.path} twice from different class loaders, " +
-                "usually by an init script and by the build itself. Apply it in one place only."
+                "usually by an init script and by the build itself. Apply it in one place only.",
         )
     }
 
@@ -63,7 +77,10 @@ class PublishDataPlugin : Plugin<Project> {
      * Fixes the resolution once the build script has run, so every later read of the version, the
      * publication and the build data agree. Reports how the version was chosen.
      */
-    private fun freezeResolution(project: Project, extension: PublishDataExtension) {
+    private fun freezeResolution(
+        project: Project,
+        extension: PublishDataExtension,
+    ) {
         extension.baseVersion.finalizeValue()
         extension.hashLength.finalizeValue()
         val resolution = extension.resolution.get()
@@ -81,7 +98,11 @@ class PublishDataPlugin : Plugin<Project> {
         warnIfVersionOverridden(project)
     }
 
-    private fun warnAboutBaseVersion(project: Project, extension: PublishDataExtension, resolution: Resolution) {
+    private fun warnAboutBaseVersion(
+        project: Project,
+        extension: PublishDataExtension,
+        resolution: Resolution,
+    ) {
         if (!resolution.hasVersion) {
             project.logger.warn(MISSING_VERSION, project.path)
             return
@@ -97,15 +118,24 @@ class PublishDataPlugin : Plugin<Project> {
         )
     }
 
-    private fun warnAboutUnreachableChannels(project: Project, extension: PublishDataExtension) {
+    private fun warnAboutUnreachableChannels(
+        project: Project,
+        extension: PublishDataExtension,
+    ) {
         val channels = extension.channelSpecs()
         Resolver.unreachableChannels(channels).forEach { channel ->
-            val reason = if (channel.matchers.isEmpty()) {
-                "it has no matcher"
-            } else {
-                "an earlier channel matches every build; channels are tried in order"
-            }
-            project.logger.warn("The PublishData channel '{}' of {} is never used: {}.", channel.name, project.path, reason)
+            val reason =
+                if (channel.matchers.isEmpty()) {
+                    "it has no matcher"
+                } else {
+                    "an earlier channel matches every build; channels are tried in order"
+                }
+            project.logger.warn(
+                "The PublishData channel '{}' of {} is never used: {}.",
+                channel.name,
+                project.path,
+                reason,
+            )
         }
     }
 
@@ -119,7 +149,10 @@ class PublishDataPlugin : Plugin<Project> {
         )
     }
 
-    private fun registerPrintVersion(project: Project, extension: PublishDataExtension) {
+    private fun registerPrintVersion(
+        project: Project,
+        extension: PublishDataExtension,
+    ) {
         if (PRINT_VERSION in project.tasks.names) return
         val version = extension.resolution.map(Resolution::version)
         project.tasks.register(PRINT_VERSION) {
@@ -129,7 +162,10 @@ class PublishDataPlugin : Plugin<Project> {
         }
     }
 
-    private fun failPublishingWithoutVersion(project: Project, extension: PublishDataExtension) {
+    private fun failPublishingWithoutVersion(
+        project: Project,
+        extension: PublishDataExtension,
+    ) {
         val hasVersion = extension.resolution.map(Resolution::hasVersion)
         val path = project.path
         project.tasks.withType(PublishToMavenRepository::class.java).configureEach {
@@ -142,17 +178,20 @@ class PublishDataPlugin : Plugin<Project> {
     private fun registerBuildData(project: Project) {
         val extension = project.extensions.getByType(PublishDataExtension::class.java)
         val buildType = project.providers.environmentVariable("BUILD_TYPE")
-        val task = project.tasks.register("generateBuildData", GenerateBuildData::class.java) {
-            outputDirectory.set(project.layout.buildDirectory.dir("generated/publishdata"))
-            fileName.set(extension.buildData.fileName)
-            includeTime.set(extension.buildData.includeTime)
-            entries.putAll(
-                extension.resolution
-                    .zip(extension.artifactId) { resolution, artifact -> resolution to artifact }
-                    .zip(buildType.orElse("")) { (resolution, artifact), type -> builtInEntries(resolution, type, artifact) }
-            )
-            entries.putAll(extension.buildData.entries)
-        }
+        val task =
+            project.tasks.register("generateBuildData", GenerateBuildData::class.java) {
+                outputDirectory.set(project.layout.buildDirectory.dir("generated/publishdata"))
+                fileName.set(extension.buildData.fileName)
+                includeTime.set(extension.buildData.includeTime)
+                entries.putAll(
+                    extension.resolution
+                        .zip(extension.artifactId) { resolution, artifact -> resolution to artifact }
+                        .zip(
+                            buildType.orElse(""),
+                        ) { (resolution, artifact), type -> builtInEntries(resolution, type, artifact) },
+                )
+                entries.putAll(extension.buildData.entries)
+            }
         project.pluginManager.withPlugin("java") {
             project.extensions.getByType(SourceSetContainer::class.java).named("main") {
                 resources.srcDir(task)
@@ -160,7 +199,11 @@ class PublishDataPlugin : Plugin<Project> {
         }
     }
 
-    private fun builtInEntries(resolution: Resolution, buildType: String, artifact: String) = linkedMapOf(
+    private fun builtInEntries(
+        resolution: Resolution,
+        buildType: String,
+        artifact: String,
+    ) = linkedMapOf(
         "type" to buildType.ifBlank { if (resolution.public) "PUBLIC" else "LOCAL" },
         "branch" to (resolution.branch ?: NONE),
         "commit" to (resolution.commit ?: NONE),
@@ -171,7 +214,10 @@ class PublishDataPlugin : Plugin<Project> {
         "channel" to resolution.channel,
     )
 
-    private fun configurePublishing(project: Project, extension: PublishDataExtension) {
+    private fun configurePublishing(
+        project: Project,
+        extension: PublishDataExtension,
+    ) {
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
         if (shouldCreatePublication(project, extension, publishing)) createPublication(project, extension, publishing)
         val resolution = extension.resolution.get()
@@ -192,12 +238,19 @@ class PublishDataPlugin : Plugin<Project> {
      * never reaches repositories other plugins registered, such as vanniktech's Central repository
      * on a branch build.
      */
-    private fun registerPublishChannel(project: Project, extension: PublishDataExtension, resolution: Resolution) {
+    private fun registerPublishChannel(
+        project: Project,
+        extension: PublishDataExtension,
+        resolution: Resolution,
+    ) {
         val centralAvailable = project.pluginManager.hasPlugin(VANNIKTECH_PUBLISH)
         if (resolution.mavenCentral && !centralAvailable) {
             project.logger.warn(MISSING_VANNIKTECH, resolution.channel, project.path)
         }
-        val repositoryTask = resolution.repository?.let { "publishAllPublicationsTo${extension.repositoryName.get()}Repository" }
+        val repositoryTask =
+            resolution.repository?.let {
+                "publishAllPublicationsTo${extension.repositoryName.get()}Repository"
+            }
         val path = project.path
         project.tasks.register(PUBLISH_CHANNEL) {
             group = "publishing"
@@ -208,7 +261,11 @@ class PublishDataPlugin : Plugin<Project> {
             val nothingToPublish = repositoryTask == null && !resolution.mavenCentral
             val channel = resolution.channel
             doLast {
-                if (missingCentral) throw GradleException(MISSING_VANNIKTECH.replaceFirst("{}", channel).replaceFirst("{}", path))
+                if (missingCentral) {
+                    throw GradleException(
+                        MISSING_VANNIKTECH.replaceFirst("{}", channel).replaceFirst("{}", path),
+                    )
+                }
                 if (nothingToPublish) logger.lifecycle("The channel '{}' of {} publishes nowhere.", channel, path)
             }
         }
@@ -218,15 +275,23 @@ class PublishDataPlugin : Plugin<Project> {
         project: Project,
         extension: PublishDataExtension,
         publishing: PublishingExtension,
-    ): Boolean = extension.autoPublication.get() &&
-        publishing.publications.isEmpty() &&
-        !project.pluginManager.hasPlugin("java-gradle-plugin") &&
-        !project.pluginManager.hasPlugin(VANNIKTECH_PUBLISH)
+    ): Boolean =
+        extension.autoPublication.get() &&
+            publishing.publications.isEmpty() &&
+            !project.pluginManager.hasPlugin("java-gradle-plugin") &&
+            !project.pluginManager.hasPlugin(VANNIKTECH_PUBLISH)
 
-    private fun createPublication(project: Project, extension: PublishDataExtension, publishing: PublishingExtension) {
+    private fun createPublication(
+        project: Project,
+        extension: PublishDataExtension,
+        publishing: PublishingExtension,
+    ) {
         val component = extension.component.orNull?.let(project.components::findByName)
         if (component == null && extension.artifacts.isEmpty()) {
-            project.logger.info("PublishData creates no publication for {}: no component and no artifacts.", project.path)
+            project.logger.info(
+                "PublishData creates no publication for {}: no component and no artifacts.",
+                project.path,
+            )
             return
         }
         publishing.publications.create("maven", MavenPublication::class.java) {
@@ -238,7 +303,9 @@ class PublishDataPlugin : Plugin<Project> {
     }
 
     private fun defaultGroupId(project: Project): String =
-        project.rootProject.group.toString().ifBlank { project.group.toString() }
+        project.rootProject.group
+            .toString()
+            .ifBlank { project.group.toString() }
 
     private companion object {
         const val EXTENSION = "publishData"

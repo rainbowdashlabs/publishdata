@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata
 
 import org.assertj.core.api.Assertions.assertThat
@@ -45,13 +51,15 @@ class MinimumGradleVersionTest {
                     put("custom", providers.environmentVariable("CUSTOM"))
                 }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val result = run("printVersion", "publish")
 
         assertThat(result.output).contains("1.5.0-feature-x-SNAPSHOT+012345678")
-        assertThat(projectDir.resolve("repo/snapshots/de/chojo/sample/1.5.0-feature-x-SNAPSHOT+012345678")).isDirectory()
+        assertThat(
+            projectDir.resolve("repo/snapshots/de/chojo/sample/1.5.0-feature-x-SNAPSHOT+012345678"),
+        ).isDirectory()
     }
 
     /** Older Gradle versions generate no accessor for settings extensions, hence the explicit `configure`. */
@@ -72,7 +80,7 @@ class MinimumGradleVersionTest {
                     }
                 }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
         projectDir.resolve("gradle.properties").writeText("version=1.5.0\norg.gradle.java.home=${javaHome()}\n")
         projectDir.resolve("build.gradle.kts").writeText(
@@ -83,7 +91,7 @@ class MinimumGradleVersionTest {
             }
 
             group = "de.chojo"
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         run("publish")
@@ -116,7 +124,7 @@ class MinimumGradleVersionTest {
                     snapshot(uri("repo/snapshots").toString())
                 }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         run("publishChannel")
@@ -125,26 +133,28 @@ class MinimumGradleVersionTest {
     }
 
     private fun javaHome(): String {
-        val javaHome = System.getenv("MIN_GRADLE_JAVA_HOME")
-            ?: System.getProperty("java.home").takeIf { Runtime.version().feature() <= 21 }
+        val javaHome =
+            System.getenv("MIN_GRADLE_JAVA_HOME")
+                ?: System.getProperty("java.home").takeIf { Runtime.version().feature() <= 21 }
         assumeTrue(javaHome != null, "no JDK 21 for Gradle $MINIMUM_GRADLE_VERSION, set MIN_GRADLE_JAVA_HOME")
         return javaHome!!
     }
 
-    private fun run(vararg tasks: String) = GradleRunner.create()
-        .withGradleVersion(MINIMUM_GRADLE_VERSION)
-        .withProjectDir(projectDir)
-        .withPluginClasspath()
-        .withArguments(*tasks, "--configuration-cache", "--stacktrace")
-        .withEnvironment(
-            mapOf(
-                "PATH" to System.getenv("PATH"),
-                "PUBLISHDATA_REF" to "feature/x",
-                "PUBLISHDATA_COMMIT" to "0123456789abcdef",
-                "CUSTOM" to "value",
-            )
-        )
-        .build()
+    private fun run(vararg tasks: String) =
+        GradleRunner
+            .create()
+            .withGradleVersion(MINIMUM_GRADLE_VERSION)
+            .withProjectDir(projectDir)
+            .withPluginClasspath()
+            .withArguments(*tasks, "--configuration-cache", "--stacktrace")
+            .withEnvironment(
+                mapOf(
+                    "PATH" to System.getenv("PATH"),
+                    "PUBLISHDATA_REF" to "feature/x",
+                    "PUBLISHDATA_COMMIT" to "0123456789abcdef",
+                    "CUSTOM" to "value",
+                ),
+            ).build()
 
     private companion object {
         const val MINIMUM_GRADLE_VERSION = "8.5"

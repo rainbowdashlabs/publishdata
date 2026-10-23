@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.resolve
 
 import de.chojo.publishdata.Channels
@@ -13,17 +19,24 @@ class ResolverTest {
     private fun channels(configure: Channels.() -> Unit): Channels =
         objects.newInstance(Channels::class.java).apply(configure)
 
-    private val eldoNexusLike = channels {
-        release("releases")
-        dev("dev")
-        snapshot("snapshots")
-    }.toSpecs()
+    private val eldoNexusLike =
+        channels {
+            release("releases")
+            dev("dev")
+            snapshot("snapshots")
+        }.toSpecs()
 
-    private fun ci(branch: String? = null, vararg tags: String, changeRequest: Boolean = false) =
-        GitContext(branch, tags.toList(), "0123456789abcdef", Ci.GITHUB, changeRequest, public = true)
+    private fun ci(
+        branch: String? = null,
+        vararg tags: String,
+        changeRequest: Boolean = false,
+    ) = GitContext(branch, tags.toList(), "0123456789abcdef", Ci.GITHUB, changeRequest, public = true)
 
-    private fun resolve(context: GitContext, channels: List<ChannelSpec> = eldoNexusLike, base: String? = "1.5.0") =
-        Resolver.resolve(context, channels, base, 7)
+    private fun resolve(
+        context: GitContext,
+        channels: List<ChannelSpec> = eldoNexusLike,
+        base: String? = "1.5.0",
+    ) = Resolver.resolve(context, channels, base, 7)
 
     @Test
     fun `tag pipeline is a release with the version of the tag`() {
@@ -44,7 +57,11 @@ class ResolverTest {
     fun `main branch is a snapshot unless release opts in`() {
         assertThat(resolve(ci("main")).channel).isEqualTo("snapshot")
 
-        val channels = channels { release { onTag().onBranch("main", "master") }; snapshot() }.toSpecs()
+        val channels =
+            channels {
+                release { onTag().onBranch("main", "master") }
+                snapshot()
+            }.toSpecs()
         val resolution = resolve(ci("main"), channels)
         assertThat(resolution.channel).isEqualTo("release")
         assertThat(resolution.version).isEqualTo("1.5.0")
@@ -148,7 +165,11 @@ class ResolverTest {
 
     @Test
     fun `dev channel matches dev branches with suffix DEV`() {
-        val channels = channels { dev(); snapshot() }.toSpecs()
+        val channels =
+            channels {
+                dev()
+                snapshot()
+            }.toSpecs()
         assertThat(resolve(ci("Dev/next"), channels).version).isEqualTo("1.5.0-DEV")
         assertThat(resolve(ci("develop"), channels).channel).isEqualTo("dev")
         assertThat(resolve(ci("feature"), channels).channel).isEqualTo("snapshot")
@@ -156,23 +177,34 @@ class ResolverTest {
 
     @Test
     fun `channels behind a match-all channel are unreachable`() {
-        val channels = channels { snapshot(); release(); channel("empty") }.toSpecs()
+        val channels =
+            channels {
+                snapshot()
+                release()
+                channel("empty")
+            }.toSpecs()
         assertThat(Resolver.unreachableChannels(channels).map { it.name }).containsExactly("release", "empty")
     }
 
     @Test
     fun `channel without matchers is unreachable`() {
-        val channels = channels { release(); channel("empty"); snapshot() }.toSpecs()
+        val channels =
+            channels {
+                release()
+                channel("empty")
+                snapshot()
+            }.toSpecs()
         assertThat(Resolver.unreachableChannels(channels).map { it.name }).containsExactly("empty")
     }
 
     @Test
     fun `match-all channel without change requests leaves change requests reachable`() {
-        val channels = channels {
-            channel("all") { onAnyRef().excludeChangeRequests() }
-            channel("requests") { onAnyRef() }
-            release()
-        }.toSpecs()
+        val channels =
+            channels {
+                channel("all") { onAnyRef().excludeChangeRequests() }
+                channel("requests") { onAnyRef() }
+                release()
+            }.toSpecs()
         assertThat(Resolver.unreachableChannels(channels).map { it.name }).containsExactly("release")
     }
 
@@ -184,7 +216,11 @@ class ResolverTest {
 
     @Test
     fun `maven central target is carried into the resolution`() {
-        val channels = channels { release { publishToMavenCentral() }; snapshot("snapshots") }.toSpecs()
+        val channels =
+            channels {
+                release { publishToMavenCentral() }
+                snapshot("snapshots")
+            }.toSpecs()
         val release = resolve(ci(null, "v1.0.0"), channels)
         assertThat(release.mavenCentral).isTrue()
         assertThat(release.repository).isNull()
