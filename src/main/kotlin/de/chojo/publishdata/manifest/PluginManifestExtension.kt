@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.manifest
 
 import org.gradle.api.Action
@@ -37,7 +43,10 @@ abstract class PluginManifestExtension {
     }
 
     /** The supported Minecraft versions, both inclusive; [max] null for no known upper bound. */
-    fun minecraft(min: String, max: String? = null) {
+    fun minecraft(
+        min: String,
+        max: String? = null,
+    ) {
         minecraftMin.set(min)
         minecraftMax.set(max)
     }
@@ -49,21 +58,37 @@ abstract class PluginManifestExtension {
 
     /** A plugin this one cannot run without. */
     @JvmOverloads
-    fun requires(name: String, min: String? = null, max: String? = null, action: Action<DependencySpec> = Action {}) {
+    fun requires(
+        name: String,
+        min: String? = null,
+        max: String? = null,
+        action: Action<DependencySpec> = Action {},
+    ) {
         dependencies.add(dependency(name, required = true, min, max, action))
     }
 
     /** A plugin this one uses when it is there. */
     @JvmOverloads
-    fun optional(name: String, min: String? = null, max: String? = null, action: Action<DependencySpec> = Action {}) {
+    fun optional(
+        name: String,
+        min: String? = null,
+        max: String? = null,
+        action: Action<DependencySpec> = Action {},
+    ) {
         dependencies.add(dependency(name, required = false, min, max, action))
     }
 
     /** Adds the entry [key] with [value] to `extra`. */
-    fun put(key: String, value: String) = extra.put(key, value)
+    fun put(
+        key: String,
+        value: String,
+    ) = extra.put(key, value)
 
     /** Adds the entry [key] with the lazily resolved [value] to `extra`. */
-    fun put(key: String, value: Provider<String>) = extra.put(key, value)
+    fun put(
+        key: String,
+        value: Provider<String>,
+    ) = extra.put(key, value)
 
     private fun dependency(
         name: String,

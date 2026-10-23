@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.manifest
 
 import org.assertj.core.api.Assertions.assertThat
@@ -12,7 +18,13 @@ class DependencyLinkTest {
         assertThat(DependencyLink.spigot(6245))
             .isEqualTo(DependencyLink("spigot", "6245", "https://www.spigotmc.org/resources/6245/"))
         assertThat(DependencyLink.hangar("HelpChat/PlaceholderAPI"))
-            .isEqualTo(DependencyLink("hangar", "HelpChat/PlaceholderAPI", "https://hangar.papermc.io/HelpChat/PlaceholderAPI"))
+            .isEqualTo(
+                DependencyLink(
+                    "hangar",
+                    "HelpChat/PlaceholderAPI",
+                    "https://hangar.papermc.io/HelpChat/PlaceholderAPI",
+                ),
+            )
         assertThat(DependencyLink.url("https://github.com/MilkBowl/Vault"))
             .isEqualTo(DependencyLink("url", null, "https://github.com/MilkBowl/Vault"))
     }

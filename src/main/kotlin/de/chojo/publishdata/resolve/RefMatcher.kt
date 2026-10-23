@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.resolve
 
 import de.chojo.publishdata.git.GitContext
@@ -16,13 +22,19 @@ sealed interface RefMatcher : Serializable {
  * @property tagVersion the version taken from [tag], null for branch matches
  * @property reason why the matcher applied, for logging
  */
-data class RefMatch(val tag: String?, val tagVersion: String?, val reason: String)
+data class RefMatch(
+    val tag: String?,
+    val tagVersion: String?,
+    val reason: String,
+)
 
 /**
  * Matches the first tag of the build that fully matches [pattern]. The version is the named group
  * `version` when the pattern declares one, the whole tag otherwise.
  */
-data class TagMatcher(val pattern: String) : RefMatcher {
+data class TagMatcher(
+    val pattern: String,
+) : RefMatcher {
     override fun match(context: GitContext): RefMatch? {
         val regex = Regex(pattern)
         val hasVersionGroup = "(?<version>" in pattern
@@ -41,7 +53,9 @@ data class TagMatcher(val pattern: String) : RefMatcher {
 }
 
 /** Matches when the branch name fully matches [pattern]. */
-data class BranchMatcher(val pattern: String) : RefMatcher {
+data class BranchMatcher(
+    val pattern: String,
+) : RefMatcher {
     override fun match(context: GitContext): RefMatch? =
         context.branch
             ?.takeIf { Regex(pattern).matches(it) }
@@ -51,7 +65,9 @@ data class BranchMatcher(val pattern: String) : RefMatcher {
         private val SPECIAL = Regex("""[\\^$.|?*+()\[\]{}]""")
 
         /** Matches exactly one of [names]. */
-        fun anyOf(vararg names: String) = BranchMatcher(names.joinToString("|") { SPECIAL.replace(it) { m -> "\\" + m.value } })
+        fun anyOf(vararg names: String) = BranchMatcher(names.joinToString("|", transform = ::escape))
+
+        private fun escape(name: String) = SPECIAL.replace(name) { "\\" + it.value }
     }
 }
 

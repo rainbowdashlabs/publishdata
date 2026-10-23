@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata
 
 import org.gradle.api.provider.MapProperty
@@ -24,8 +30,14 @@ abstract class BuildDataSpec {
     }
 
     /** Adds the entry [key] with [value]. */
-    fun put(key: String, value: String) = entries.put(key, value)
+    fun put(
+        key: String,
+        value: String,
+    ) = entries.put(key, value)
 
     /** Adds the entry [key] with the lazily resolved [value]. */
-    fun put(key: String, value: Provider<String>) = entries.put(key, value)
+    fun put(
+        key: String,
+        value: Provider<String>,
+    ) = entries.put(key, value)
 }

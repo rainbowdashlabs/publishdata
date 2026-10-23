@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.git
 
 import org.gradle.api.GradleException
@@ -16,7 +22,6 @@ import javax.inject.Inject
  * commit, branch or tag invalidates a cached configuration.
  */
 abstract class GitContextSource : ValueSource<GitContext, GitContextSource.Parameters> {
-
     /** Parameters of [GitContextSource]. */
     interface Parameters : ValueSourceParameters {
         /** A directory inside the working copy. */
@@ -32,18 +37,19 @@ abstract class GitContextSource : ValueSource<GitContext, GitContextSource.Param
 
     private fun git(args: List<String>): String? {
         val output = ByteArrayOutputStream()
-        val result = try {
-            exec.exec {
-                executable("git")
-                args(args)
-                workingDir(parameters.workingDirectory)
-                standardOutput = output
-                errorOutput = OutputStream.nullOutputStream()
-                isIgnoreExitValue = true
+        val result =
+            try {
+                exec.exec {
+                    executable("git")
+                    args(args)
+                    workingDir(parameters.workingDirectory)
+                    standardOutput = output
+                    errorOutput = OutputStream.nullOutputStream()
+                    isIgnoreExitValue = true
+                }
+            } catch (e: GradleException) {
+                return null
             }
-        } catch (e: GradleException) {
-            return null
-        }
         return output.toString().trim().takeIf { result.exitValue == 0 && it.isNotEmpty() }
     }
 }

@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.git
 
 import java.io.Serializable
@@ -25,5 +31,10 @@ data class GitContext(
 
 /** The source a [GitContext] was read from. */
 enum class Ci {
-    GENERIC, GITHUB, GITLAB, BITBUCKET, JENKINS, LOCAL
+    GENERIC,
+    GITHUB,
+    GITLAB,
+    BITBUCKET,
+    JENKINS,
+    LOCAL,
 }

@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.manifest
 
 import java.io.Serializable
@@ -16,12 +22,13 @@ data class ManifestDependency(
     val links: List<DependencyLink> = emptyList(),
 ) : Serializable {
     /** This dependency with what [refinement] says on top: its requirement, and versions and links it sets. */
-    fun refinedBy(refinement: ManifestDependency) = copy(
-        required = refinement.required,
-        min = refinement.min ?: min,
-        max = refinement.max ?: max,
-        links = links + refinement.links.filter { it !in links },
-    )
+    fun refinedBy(refinement: ManifestDependency) =
+        copy(
+            required = refinement.required,
+            min = refinement.min ?: min,
+            max = refinement.max ?: max,
+            links = links + refinement.links.filter { it !in links },
+        )
 
     private companion object {
         private const val serialVersionUID = 1L

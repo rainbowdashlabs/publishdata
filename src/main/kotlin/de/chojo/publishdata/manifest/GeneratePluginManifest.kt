@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.manifest
 
 import org.gradle.api.DefaultTask
@@ -57,21 +63,25 @@ abstract class GeneratePluginManifest : DefaultTask() {
 
     @TaskAction
     fun generate() {
-        val manifest = PluginManifest.of(
-            PluginDescriptor.read(descriptors.files),
-            version.get(),
-            PluginManifest.Declared(
-                name = pluginName.orNull,
-                platforms = platforms.orNull,
-                minecraftMin = minecraftMin.orNull,
-                minecraftMax = minecraftMax.orNull,
-                java = java.orNull,
-                dependencies = dependencies.get(),
-                extra = extra.get(),
-            ),
-        )
+        val manifest =
+            PluginManifest.of(
+                PluginDescriptor.read(descriptors.files),
+                version.get(),
+                PluginManifest.Declared(
+                    name = pluginName.orNull,
+                    platforms = platforms.orNull,
+                    minecraftMin = minecraftMin.orNull,
+                    minecraftMax = minecraftMax.orNull,
+                    java = java.orNull,
+                    dependencies = dependencies.get(),
+                    extra = extra.get(),
+                ),
+            )
         if (manifest.name == null) {
-            logger.warn("The plugin manifest of {} has no name: there is no plugin.yml or paper-plugin.yml, and pluginManifest sets none.", path)
+            logger.warn(
+                "The plugin manifest of {} has no name: there is no plugin.yml or paper-plugin.yml, and pluginManifest sets none.",
+                path,
+            )
         }
         outputFile.get().asFile.writeText(manifest.toJson())
     }

@@ -1,47 +1,66 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.manifest
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class PluginManifestTest {
-    private val descriptor = PluginDescriptor(
-        name = "BloodNight",
-        apiVersion = "1.20",
-        platforms = listOf("bukkit"),
-        dependencies = listOf(
-            ManifestDependency("Vault", required = true),
-            ManifestDependency("PlaceholderAPI", required = false),
-        ),
-    )
+    private val descriptor =
+        PluginDescriptor(
+            name = "BloodNight",
+            apiVersion = "1.20",
+            platforms = listOf("bukkit"),
+            dependencies =
+                listOf(
+                    ManifestDependency("Vault", required = true),
+                    ManifestDependency("PlaceholderAPI", required = false),
+                ),
+        )
 
     @Test
     fun `the descriptor fills what the build script leaves out`() {
         val manifest = PluginManifest.of(descriptor, "1.4.0", PluginManifest.Declared())
 
         assertThat(manifest).isEqualTo(
-            PluginManifest("BloodNight", "1.4.0", listOf("bukkit"), "1.20", null, null, descriptor.dependencies, emptyMap())
+            PluginManifest(
+                "BloodNight",
+                "1.4.0",
+                listOf("bukkit"),
+                "1.20",
+                null,
+                null,
+                descriptor.dependencies,
+                emptyMap(),
+            ),
         )
     }
 
     @Test
     fun `the build script overrides and refines, and adds dependencies after the descriptor's`() {
         val papi = DependencyLink.modrinth("placeholderapi")
-        val manifest = PluginManifest.of(
-            descriptor,
-            "1.4.0",
-            PluginManifest.Declared(
-                name = "Blood Night",
-                platforms = listOf("paper", "folia"),
-                minecraftMin = "1.20.4",
-                minecraftMax = "1.21.4",
-                java = 21,
-                dependencies = listOf(
-                    ManifestDependency("placeholderapi", required = true, min = "2.11.0", links = listOf(papi)),
-                    ManifestDependency("LuckPerms", required = false),
+        val manifest =
+            PluginManifest.of(
+                descriptor,
+                "1.4.0",
+                PluginManifest.Declared(
+                    name = "Blood Night",
+                    platforms = listOf("paper", "folia"),
+                    minecraftMin = "1.20.4",
+                    minecraftMax = "1.21.4",
+                    java = 21,
+                    dependencies =
+                        listOf(
+                            ManifestDependency("placeholderapi", required = true, min = "2.11.0", links = listOf(papi)),
+                            ManifestDependency("LuckPerms", required = false),
+                        ),
+                    extra = mapOf("discord" to "https://discord.gg/x"),
                 ),
-                extra = mapOf("discord" to "https://discord.gg/x"),
-            ),
-        )
+            )
 
         assertThat(manifest.name).isEqualTo("Blood Night")
         assertThat(manifest.platforms).containsExactly("paper", "folia")
@@ -66,18 +85,24 @@ class PluginManifestTest {
 
     @Test
     fun `json carries the schema, leaves out what is unknown and escapes text`() {
-        val manifest = PluginManifest(
-            name = "Quote \" and \\ and\nline\u0001",
-            version = "1.0.0",
-            platforms = emptyList(),
-            minecraftMin = "1.20",
-            minecraftMax = null,
-            java = 21,
-            dependencies = listOf(
-                ManifestDependency("Vault", required = true, links = listOf(DependencyLink.url("https://example.com/v")))
-            ),
-            extra = emptyMap(),
-        )
+        val manifest =
+            PluginManifest(
+                name = "Quote \" and \\ and\nline\u0001",
+                version = "1.0.0",
+                platforms = emptyList(),
+                minecraftMin = "1.20",
+                minecraftMax = null,
+                java = 21,
+                dependencies =
+                    listOf(
+                        ManifestDependency(
+                            "Vault",
+                            required = true,
+                            links = listOf(DependencyLink.url("https://example.com/v")),
+                        ),
+                    ),
+                extra = emptyMap(),
+            )
 
         assertThat(manifest.toJson()).isEqualTo(
             """
@@ -105,7 +130,7 @@ class PluginManifestTest {
               "extra": {}
             }
 
-            """.trimIndent()
+            """.trimIndent(),
         )
     }
 }

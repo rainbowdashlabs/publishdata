@@ -3,39 +3,37 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     `kotlin-dsl`
     `maven-publish`
+    alias(libs.plugins.publishdata)
+    alias(libs.plugins.spotless)
 }
-
-group = "de.chojo"
-version = releaseVersion("2.1.0")
 
 repositories {
     mavenCentral()
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
     withSourcesJar()
     withJavadocJar()
 }
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_17
-        freeCompilerArgs.add("-Xjdk-release=17")
+        jvmTarget = JvmTarget.JVM_21
+        freeCompilerArgs.add("-Xjdk-release=21")
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.release = 17
+    options.release = 21
 }
 
 dependencies {
-    implementation("org.yaml:snakeyaml:2.6")
-    testImplementation(platform("org.junit:junit-bom:6.1.3"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.assertj:assertj-core:3.27.7")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    implementation(libs.snakeyaml)
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.assertj.core)
+    testRuntimeOnly(libs.junit.launcher)
 }
 
 tasks.test {
@@ -43,7 +41,7 @@ tasks.test {
 }
 
 gradlePlugin {
-    website = "https://github.com/rainbowdashlabs/publishdata"
+    website = "https://docs.chojo.dev/publishdata"
     vcsUrl = "https://github.com/rainbowdashlabs/publishdata"
     plugins {
         create("publishData") {
@@ -75,39 +73,49 @@ gradlePlugin {
     }
 }
 
+publishData {
+    eldoNexus(dev = false)
+}
+
 publishing {
-    repositories {
-        maven {
-            name = "EldoNexus"
-            url = uri(releaseRepository())
-            credentials(PasswordCredentials::class) {
-                username = System.getenv("NEXUS_USERNAME")
-                password = System.getenv("NEXUS_PASSWORD")
+    publications.withType<MavenPublication>().configureEach {
+        pom {
+            name = "PublishData"
+            description = "Derives the project version from git tags and branches and publishes each build to " +
+                "the right Maven repository."
+            url = "https://github.com/rainbowdashlabs/publishdata"
+            inceptionYear = "2021"
+            licenses {
+                license {
+                    name = "LGPL-3.0-or-later"
+                    url = "https://www.gnu.org/licenses/lgpl-3.0.html"
+                }
+            }
+            developers {
+                developer {
+                    id = "rainbowdashlabs"
+                    name = "Nora Fülling"
+                    email = "mail@chojo.dev"
+                    url = "https://github.com/rainbowdashlabs"
+                }
+            }
+            scm {
+                url = "https://github.com/rainbowdashlabs/publishdata"
+                connection = "scm:git:git://github.com/rainbowdashlabs/publishdata.git"
+                developerConnection = "scm:git:ssh://github.com/rainbowdashlabs/publishdata.git"
             }
         }
     }
 }
 
-/**
- * Derives the version of this plugin from the GitHub Actions ref: a tag is the release version,
- * branches get a channel suffix on top of [baseVersion]. Mirrors the plugin's `eldoNexus()` preset,
- * which the plugin cannot apply to itself.
- */
-fun releaseVersion(baseVersion: String): String {
-    val refName = System.getenv("GITHUB_REF_NAME") ?: return "$baseVersion-SNAPSHOT"
-    return when {
-        System.getenv("GITHUB_REF_TYPE") == "tag" -> refName.removePrefix("v")
-        refName.startsWith("dev") -> "$baseVersion-DEV"
-        else -> "$baseVersion-SNAPSHOT"
+spotless {
+    kotlin {
+        target("src/**/*.kt")
+        licenseHeaderFile(rootProject.file("HEADER.txt"))
+        ktlint(libs.versions.ktlint.get())
     }
-}
-
-/** Selects the EldoNexus repository matching [releaseVersion]. */
-fun releaseRepository(): String {
-    val version = project.version.toString()
-    return when {
-        version.endsWith("-SNAPSHOT") -> "https://eldonexus.de/repository/maven-snapshots/"
-        version.endsWith("-DEV") -> "https://eldonexus.de/repository/maven-dev/"
-        else -> "https://eldonexus.de/repository/maven-releases/"
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint(libs.versions.ktlint.get())
     }
 }

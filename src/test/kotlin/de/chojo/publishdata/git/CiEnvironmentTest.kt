@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata.git
 
 import org.assertj.core.api.Assertions.assertThat
@@ -13,13 +19,14 @@ class CiEnvironmentTest {
 
     @Test
     fun `github tag build`() {
-        val context = detect(
-            "GITHUB_ACTIONS" to "true",
-            "GITHUB_REF" to "refs/tags/v1.2.3",
-            "GITHUB_REF_TYPE" to "tag",
-            "GITHUB_REF_NAME" to "v1.2.3",
-            "GITHUB_SHA" to "abcdef0123456789",
-        )
+        val context =
+            detect(
+                "GITHUB_ACTIONS" to "true",
+                "GITHUB_REF" to "refs/tags/v1.2.3",
+                "GITHUB_REF_TYPE" to "tag",
+                "GITHUB_REF_NAME" to "v1.2.3",
+                "GITHUB_SHA" to "abcdef0123456789",
+            )
         assertThat(context).isEqualTo(GitContext(null, listOf("v1.2.3"), "abcdef0123456789", Ci.GITHUB, false, true))
     }
 
@@ -31,12 +38,13 @@ class CiEnvironmentTest {
 
     @Test
     fun `github pull request uses the head branch`() {
-        val context = detect(
-            "GITHUB_ACTIONS" to "true",
-            "GITHUB_REF_TYPE" to "branch",
-            "GITHUB_REF_NAME" to "12/merge",
-            "GITHUB_HEAD_REF" to "feature/x",
-        )
+        val context =
+            detect(
+                "GITHUB_ACTIONS" to "true",
+                "GITHUB_REF_TYPE" to "branch",
+                "GITHUB_REF_NAME" to "12/merge",
+                "GITHUB_HEAD_REF" to "feature/x",
+            )
         assertThat(context?.branch).isEqualTo("feature/x")
         assertThat(context?.changeRequest).isTrue()
     }
@@ -61,12 +69,13 @@ class CiEnvironmentTest {
 
     @Test
     fun `generic ref takes precedence`() {
-        val context = detect(
-            "GITHUB_ACTIONS" to "true",
-            "GITHUB_REF_NAME" to "main",
-            "PUBLISHDATA_REF" to "refs/tags/v2.0.0",
-            "PUBLISHDATA_COMMIT" to "feed",
-        )
+        val context =
+            detect(
+                "GITHUB_ACTIONS" to "true",
+                "GITHUB_REF_NAME" to "main",
+                "PUBLISHDATA_REF" to "refs/tags/v2.0.0",
+                "PUBLISHDATA_COMMIT" to "feed",
+            )
         assertThat(context).isEqualTo(GitContext(null, listOf("v2.0.0"), "feed", Ci.GENERIC, false, true))
     }
 
@@ -90,13 +99,25 @@ class CiEnvironmentTest {
 
     @Test
     fun `jenkins multibranch tag build`() {
-        val context = detect("JENKINS_URL" to "https://ci", "TAG_NAME" to "v1.0.0", "BRANCH_NAME" to "v1.0.0", "GIT_COMMIT" to "abc")
+        val context =
+            detect(
+                "JENKINS_URL" to "https://ci",
+                "TAG_NAME" to "v1.0.0",
+                "BRANCH_NAME" to "v1.0.0",
+                "GIT_COMMIT" to "abc",
+            )
         assertThat(context).isEqualTo(GitContext(null, listOf("v1.0.0"), "abc", Ci.JENKINS, false, true))
     }
 
     @Test
     fun `jenkins multibranch pull request uses the source branch`() {
-        val context = detect("JENKINS_URL" to "https://ci", "BRANCH_NAME" to "PR-3", "CHANGE_ID" to "3", "CHANGE_BRANCH" to "fix/y")
+        val context =
+            detect(
+                "JENKINS_URL" to "https://ci",
+                "BRANCH_NAME" to "PR-3",
+                "CHANGE_ID" to "3",
+                "CHANGE_BRANCH" to "fix/y",
+            )
         assertThat(context).isEqualTo(GitContext("fix/y", emptyList(), null, Ci.JENKINS, true, true))
     }
 

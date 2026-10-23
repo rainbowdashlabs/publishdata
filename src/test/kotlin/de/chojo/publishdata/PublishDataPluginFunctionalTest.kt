@@ -1,3 +1,9 @@
+/*
+ *     SPDX-License-Identifier: LGPL-3.0-or-later
+ *
+ *     Copyright (C) RainbowDashLabs and Contributor
+ */
+
 package de.chojo.publishdata
 
 import org.assertj.core.api.Assertions.assertThat
@@ -47,15 +53,16 @@ class PublishDataPluginFunctionalTest {
                     snapshot(uri("repo/snapshots").toString())
                 }
             }
-            """
+            """,
         )
         commit()
-        val env = mapOf(
-            "GITHUB_ACTIONS" to "true",
-            "GITHUB_REF_TYPE" to "tag",
-            "GITHUB_REF_NAME" to "v2.1.0",
-            "GITHUB_SHA" to "0123456789abcdef",
-        )
+        val env =
+            mapOf(
+                "GITHUB_ACTIONS" to "true",
+                "GITHUB_REF_TYPE" to "tag",
+                "GITHUB_REF_NAME" to "v2.1.0",
+                "GITHUB_SHA" to "0123456789abcdef",
+            )
         run("publish", env = env)
         assertThat(projectDir.resolve("repo/releases/de/chojo/sample/2.1.0/sample-2.1.0.jar")).exists()
         assertThat(projectDir.resolve("repo/snapshots")).doesNotExist()
@@ -71,7 +78,7 @@ class PublishDataPluginFunctionalTest {
                     snapshot(uri("repo/snapshots").toString())
                 }
             }
-            """
+            """,
         )
         commit()
         run("publish", env = mapOf("GITLAB_CI" to "true", "CI_COMMIT_BRANCH" to "feature/x"))
@@ -88,7 +95,7 @@ class PublishDataPluginFunctionalTest {
                     put("custom", "value")
                 }
             }
-            """
+            """,
         )
         commit()
         git("checkout", "-q", "--detach")
@@ -96,7 +103,17 @@ class PublishDataPluginFunctionalTest {
         val data = projectDir.resolve("build/resources/main/build.data")
         val properties = Properties().apply { data.inputStream().use(::load) }
         assertThat(data.readLines().map { it.substringBefore('=') }).containsExactly(
-            "time", "unix", "type", "branch", "commit", "artifactVersion", "artifact", "runtime", "tag", "channel", "custom",
+            "time",
+            "unix",
+            "type",
+            "branch",
+            "commit",
+            "artifactVersion",
+            "artifact",
+            "runtime",
+            "tag",
+            "channel",
+            "custom",
         )
         assertThat(properties)
             .containsEntry("type", "KOFI")
@@ -118,11 +135,13 @@ class PublishDataPluginFunctionalTest {
                     fileName = "sample.data"
                 }
             }
-            """
+            """,
         )
         commit()
         run("processResources", "--build-cache")
-        assertThat(projectDir.resolve("build/resources/main/sample.data").readLines()).noneMatch { it.startsWith("time=") }
+        assertThat(
+            projectDir.resolve("build/resources/main/sample.data").readLines(),
+        ).noneMatch { it.startsWith("time=") }
         projectDir.resolve("build").deleteRecursively()
         val result = run("processResources", "--build-cache")
         assertThat(result.task(":generateBuildData")?.outcome?.name).isEqualTo("FROM_CACHE")
@@ -150,7 +169,7 @@ class PublishDataPluginFunctionalTest {
                 }
                 buildData()
             }
-            """
+            """,
         )
         commit()
         run("publish", "--configuration-cache")
@@ -171,10 +190,17 @@ class PublishDataPluginFunctionalTest {
                     }
                 }
             }
-            """
+            """,
         )
         commit()
-        val result = run("help", "--task", "publishAllPublicationsToEldoNexusRepository", env = mapOf("PUBLISHDATA_REF" to "dev"))
+        val result =
+            run(
+                "help",
+                "--task",
+                "publishAllPublicationsToEldoNexusRepository",
+                env =
+                    mapOf("PUBLISHDATA_REF" to "dev"),
+            )
         assertThat(result.output).contains("publishAllPublicationsToEldoNexusRepository")
     }
 
@@ -184,7 +210,7 @@ class PublishDataPluginFunctionalTest {
             """
             rootProject.name = "Multi"
             include("core", "api")
-            """.trimIndent()
+            """.trimIndent(),
         )
         projectDir.resolve("build.gradle.kts").writeText(
             """
@@ -213,7 +239,7 @@ class PublishDataPluginFunctionalTest {
                     buildData()
                 }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
         projectDir.resolve("core").mkdirs()
         projectDir.resolve("api").mkdirs()
@@ -223,14 +249,18 @@ class PublishDataPluginFunctionalTest {
                 artifactId = "multi-api"
                 groupId = "de.chojo.multi"
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
         commit()
         git("tag", "v2.0.0")
 
         val result = run("testVersion", "publish", env = mapOf("PUBLIC_BUILD" to "true"))
 
-        val versions = result.output.lines().filter { it.startsWith("VERSION ") }.map { it.removePrefix("VERSION ") }
+        val versions =
+            result.output
+                .lines()
+                .filter { it.startsWith("VERSION ") }
+                .map { it.removePrefix("VERSION ") }
         assertThat(versions).containsExactlyInAnyOrder(":=2.0.0", ":core=2.0.0", ":api=2.0.0")
         assertThat(projectDir.resolve("repo/releases/de/chojo/core/2.0.0/core-2.0.0.jar")).exists()
         assertThat(projectDir.resolve("repo/releases/de/chojo/multi/multi-api/2.0.0/multi-api-2.0.0.jar")).exists()
@@ -248,7 +278,7 @@ class PublishDataPluginFunctionalTest {
                     snapshot(uri("repo/snapshots").toString())
                 }
             }
-            """
+            """,
         )
         commit()
         val build = run("testVersion", "jar")
@@ -296,7 +326,7 @@ class PublishDataPluginFunctionalTest {
             afterEvaluate {
                 publishData.channels { channel("late") { onAnyRef() } }
             }
-            """
+            """,
         )
         commit()
         assertThat(version(run("testVersion"))).isEqualTo("1.5.0-SNAPSHOT")
@@ -311,13 +341,17 @@ class PublishDataPluginFunctionalTest {
         val missing = runner("publish", "--dry-run", env = env).buildAndFail()
         assertThat(missing.output).contains("EldoNexusUsername")
 
-        val provided = run(
-            "publish", "--dry-run",
-            env = env + mapOf(
-                "ORG_GRADLE_PROJECT_EldoNexusUsername" to "user",
-                "ORG_GRADLE_PROJECT_EldoNexusPassword" to "secret",
-            ),
-        )
+        val provided =
+            run(
+                "publish",
+                "--dry-run",
+                env =
+                    env +
+                        mapOf(
+                            "ORG_GRADLE_PROJECT_EldoNexusUsername" to "user",
+                            "ORG_GRADLE_PROJECT_EldoNexusPassword" to "secret",
+                        ),
+            )
         assertThat(provided.output).contains(":publishMavenPublicationToEldoNexusRepository SKIPPED")
     }
 
@@ -351,7 +385,7 @@ class PublishDataPluginFunctionalTest {
                     put('custom', 'value')
                 }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
         commit()
         val result = run("printVersion", "publish", env = mapOf("PUBLISHDATA_REF" to "feature/x"))
@@ -369,7 +403,7 @@ class PublishDataPluginFunctionalTest {
                     release()
                 }
             }
-            """
+            """,
         )
         commit()
         val result = run("testVersion")
@@ -398,7 +432,7 @@ class PublishDataPluginFunctionalTest {
             }
 
             apply(plugin = "de.chojo.publishdata")
-            """.trimIndent()
+            """.trimIndent(),
         )
         val result = runner("help", "-I", "init.gradle.kts", injectPlugin = false).buildAndFail()
         assertThat(result.output).contains("PublishData is applied to : twice from different class loaders")
@@ -424,7 +458,7 @@ class PublishDataPluginFunctionalTest {
                     buildData()
                 }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
         projectDir.resolve("build.gradle.kts").writeText(
             """
@@ -436,7 +470,7 @@ class PublishDataPluginFunctionalTest {
                     doLast { println("VERSION " + line) }
                 }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
         projectDir.resolve("core").mkdirs()
         projectDir.resolve("core/build.gradle.kts").writeText(
@@ -445,7 +479,7 @@ class PublishDataPluginFunctionalTest {
                 `java-library`
                 `maven-publish`
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
         projectDir.resolve("api").mkdirs()
         projectDir.resolve("api/build.gradle.kts").writeText(
@@ -459,14 +493,18 @@ class PublishDataPluginFunctionalTest {
             publishData {
                 artifactId = "multi-api"
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
         commit()
         git("tag", "v2.0.0")
 
         val result = run("testVersion", "publish", "--configuration-cache", env = mapOf("PUBLIC_BUILD" to "true"))
 
-        val versions = result.output.lines().filter { it.startsWith("VERSION ") }.map { it.removePrefix("VERSION ") }
+        val versions =
+            result.output
+                .lines()
+                .filter { it.startsWith("VERSION ") }
+                .map { it.removePrefix("VERSION ") }
         assertThat(versions).containsExactlyInAnyOrder(":=2.0.0", ":core=2.0.0", ":api=2.0.0")
         assertThat(projectDir.resolve("repo/releases/de/chojo/core/2.0.0/core-2.0.0.jar")).exists()
         assertThat(projectDir.resolve("repo/releases/de/chojo/multi-api/2.0.0/multi-api-2.0.0.jar")).exists()
@@ -494,7 +532,9 @@ class PublishDataPluginFunctionalTest {
         commit()
         val env = mapOf("PUBLISHDATA_REF" to "feature/x")
         run("publishChannel", "--configuration-cache", env = env)
-        assertThat(run("publishChannel", "--configuration-cache", env = env).output).contains("Reusing configuration cache.")
+        assertThat(
+            run("publishChannel", "--configuration-cache", env = env).output,
+        ).contains("Reusing configuration cache.")
     }
 
     @Test
@@ -506,7 +546,7 @@ class PublishDataPluginFunctionalTest {
                     release { publishToMavenCentral() }
                 }
             }
-            """
+            """,
         )
         commit()
         val env = mapOf("PUBLISHDATA_REF" to "refs/tags/v2.0.0")
@@ -537,7 +577,7 @@ class PublishDataPluginFunctionalTest {
                     snapshot(uri("repo/snapshots").toString())
                 }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
     }
 
@@ -567,7 +607,7 @@ class PublishDataPluginFunctionalTest {
                 val resolvedVersion = project.version.toString()
                 doLast { println("VERSION=" + resolvedVersion) }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
     }
 
@@ -576,17 +616,24 @@ class PublishDataPluginFunctionalTest {
      * copied first, so the classpath differs from the original like a different plugin version would.
      */
     private fun pluginClasspath(copyTo: File? = null): String {
-        val metadata = Properties().apply {
-            PublishDataPluginFunctionalTest::class.java.classLoader
-                .getResourceAsStream("plugin-under-test-metadata.properties")!!
-                .use(::load)
-        }
-        return metadata.getProperty("implementation-classpath")
+        val metadata =
+            Properties().apply {
+                PublishDataPluginFunctionalTest::class.java.classLoader
+                    .getResourceAsStream("plugin-under-test-metadata.properties")!!
+                    .use(::load)
+            }
+        return metadata
+            .getProperty("implementation-classpath")
             .split(File.pathSeparator)
             .mapIndexed { index, path ->
-                copyTo?.resolve(index.toString())?.takeIf { File(path).exists() }?.also { File(path).copyRecursively(it) }?.path ?: path
-            }
-            .joinToString(", ") { "\"${it.replace("\\", "/")}\"" }
+                copyTo
+                    ?.resolve(
+                        index.toString(),
+                    )?.takeIf { File(path).exists() }
+                    ?.also { File(path).copyRecursively(it) }
+                    ?.path
+                    ?: path
+            }.joinToString(", ") { "\"${it.replace("\\", "/")}\"" }
     }
 
     private fun writeInitScript() {
@@ -602,7 +649,7 @@ class PublishDataPluginFunctionalTest {
                     buildData()
                 }
             }
-            """.trimIndent()
+            """.trimIndent(),
         )
     }
 
@@ -612,38 +659,54 @@ class PublishDataPluginFunctionalTest {
     }
 
     private fun version(result: BuildResult): String =
-        result.output.lineSequence().first { it.startsWith("VERSION=") }.removePrefix("VERSION=")
+        result.output
+            .lineSequence()
+            .first { it.startsWith("VERSION=") }
+            .removePrefix("VERSION=")
 
-    private fun run(vararg args: String, env: Map<String, String> = emptyMap()): BuildResult =
-        runner(*args, env = env).build()
+    private fun run(
+        vararg args: String,
+        env: Map<String, String> = emptyMap(),
+    ): BuildResult = runner(*args, env = env).build()
 
     private fun runner(
         vararg args: String,
         env: Map<String, String> = emptyMap(),
         injectPlugin: Boolean = true,
     ): GradleRunner =
-        GradleRunner.create()
+        GradleRunner
+            .create()
             .withProjectDir(projectDir)
             .apply { if (injectPlugin) withPluginClasspath() }
             .withArguments(*args, "--stacktrace")
             .withEnvironment(cleanEnvironment() + env)
 
-    private fun cleanEnvironment(): Map<String, String> = System.getenv().filterKeys { key ->
-        CI_VARIABLES.none { key == it || key.startsWith("${it}_") }
-    }
+    private fun cleanEnvironment(): Map<String, String> =
+        System.getenv().filterKeys { key ->
+            CI_VARIABLES.none { key == it || key.startsWith("${it}_") }
+        }
 
     private fun git(vararg args: String): String {
-        val process = ProcessBuilder(
-            listOf(
-                "git",
-                "-c", "user.name=Test",
-                "-c", "user.email=test@example.com",
-                "-c", "commit.gpgsign=false",
-                "-c", "tag.gpgsign=false",
-                *args,
-            )
-        ).directory(projectDir).redirectErrorStream(true).start()
-        val output = process.inputStream.bufferedReader().readText().trim()
+        val process =
+            ProcessBuilder(
+                listOf(
+                    "git",
+                    "-c",
+                    "user.name=Test",
+                    "-c",
+                    "user.email=test@example.com",
+                    "-c",
+                    "commit.gpgsign=false",
+                    "-c",
+                    "tag.gpgsign=false",
+                    *args,
+                ),
+            ).directory(projectDir).redirectErrorStream(true).start()
+        val output =
+            process.inputStream
+                .bufferedReader()
+                .readText()
+                .trim()
         check(process.waitFor() == 0) { "git ${args.joinToString(" ")} failed: $output" }
         return output
     }
