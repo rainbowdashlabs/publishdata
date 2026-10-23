@@ -11,7 +11,9 @@ When `maven-publish` is applied, PublishData
   applies `java-gradle-plugin` or `com.vanniktech.maven.publish`,
 - registers a Maven repository with the URL of the resolved channel, named `PublishData` (`EldoNexus` or `GitLab`
   with the [presets](./presets.md)),
-- registers the task `publishChannel`.
+- registers the task `publishChannel`,
+- fills in the POM name and description of every Maven publication,
+- publishes only `.md5` and `.sha1` checksums.
 
 ## publishChannel
 
@@ -44,6 +46,41 @@ publishData {
     }
 }
 ```
+
+## POM name and description
+
+Every Maven publication, also those of other plugins, gets the project name as POM `name` and the project
+`description` as POM `description`. Both are defaults: a value the build sets wins.
+
+The description is read when the POM is written, so it may be set anywhere in the build script, also below the
+`plugins` block of a module whose convention plugin configures the POM:
+
+```kotlin
+plugins {
+    id("my.publishing-conventions")
+}
+
+description = "The core module"
+```
+
+A convention plugin that assigns `description = project.description` in its `pom { }` block reads the description
+before the module sets it. That assigns nothing, and the default still applies.
+
+## Checksums
+
+Gradle writes `.md5`, `.sha1`, `.sha256` and `.sha512` files next to every published file. Maven repositories and
+Maven Central only need `.md5` and `.sha1`, so PublishData leaves out the other two. Turn that off to get all four:
+
+```kotlin
+publishData {
+    onlyRequiredChecksums = false
+}
+```
+
+Gradle reads this switch from a system property that applies to the whole build while it publishes. Turning it off in
+one project therefore keeps the extra checksums only as long as no other project of the build that keeps it on has
+started publishing. Turn it off in every project, for example in the
+[settings plugin](./multi-module/settings-plugin.md) defaults, to get all four everywhere.
 
 ## Further options
 
