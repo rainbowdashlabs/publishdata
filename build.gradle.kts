@@ -14,21 +14,20 @@ repositories {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
     withSourcesJar()
     withJavadocJar()
 }
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_17
-        freeCompilerArgs.add("-Xjdk-release=17")
+        jvmTarget = JvmTarget.JVM_21
+        freeCompilerArgs.add("-Xjdk-release=21")
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.release = 17
+    options.release = 21
 }
 
 dependencies {
