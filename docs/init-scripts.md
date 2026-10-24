@@ -11,7 +11,7 @@ do not declare it, for example on a CI agent:
 ```kotlin
 initscript {
     repositories { maven("https://eldonexus.de/repository/maven-public/") }
-    dependencies { classpath("de.chojo:publishdata:2.2.0") }
+    dependencies { classpath("de.chojo:publishdata:2.3.0") }
 }
 
 gradle.beforeProject {
