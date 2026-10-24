@@ -51,15 +51,26 @@ class MinimumGradleVersionTest {
                     put("custom", providers.environmentVariable("CUSTOM"))
                 }
             }
+
+            description = "Set at the end"
             """.trimIndent(),
         )
 
         val result = run("printVersion", "publish")
 
         assertThat(result.output).contains("1.5.0-feature-x-SNAPSHOT+012345678")
+        val published = projectDir.resolve("repo/snapshots/de/chojo/sample/1.5.0-feature-x-SNAPSHOT+012345678")
+        assertThat(published).isDirectory()
+        assertThat(published.resolve("sample-1.5.0-feature-x-SNAPSHOT+012345678.pom").readText())
+            .contains("<name>sample</name>", "<description>Set at the end</description>")
         assertThat(
-            projectDir.resolve("repo/snapshots/de/chojo/sample/1.5.0-feature-x-SNAPSHOT+012345678"),
-        ).isDirectory()
+            projectDir
+                .resolve("repo")
+                .walk()
+                .map { it.extension }
+                .filter { it.startsWith("sha") || it == "md5" }
+                .toSet(),
+        ).containsExactlyInAnyOrder("md5", "sha1")
     }
 
     /** Older Gradle versions generate no accessor for settings extensions, hence the explicit `configure`. */

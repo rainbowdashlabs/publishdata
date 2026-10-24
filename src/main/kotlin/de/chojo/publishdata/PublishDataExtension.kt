@@ -62,6 +62,17 @@ abstract class PublishDataExtension
         /** Name of the repository registered for the resolved channel. Defaults to `PublishData`. */
         abstract val repositoryName: Property<String>
 
+        /**
+         * Whether publications to repositories write only the `.md5` and `.sha1` checksums that
+         * Maven repositories and Maven Central require, leaving out `.sha256` and `.sha512`.
+         * Defaults to true.
+         *
+         * Gradle reads this from a JVM-wide system property while publishing. Turning it off only
+         * stops PublishData from setting that property: once a publish task of a project that keeps
+         * it on has started, later publish tasks of the same build write only `.md5` and `.sha1` too.
+         */
+        abstract val onlyRequiredChecksums: Property<Boolean>
+
         /** The release channels, in order of precedence. */
         val channels: Channels = objects.newInstance(Channels::class.java)
 
@@ -82,6 +93,7 @@ abstract class PublishDataExtension
             hashLength.convention(7)
             autoPublication.convention(true)
             component.convention("java")
+            onlyRequiredChecksums.convention(true)
             repositoryName.convention("PublishData")
         }
 

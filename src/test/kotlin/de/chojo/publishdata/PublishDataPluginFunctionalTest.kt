@@ -582,6 +582,137 @@ class PublishDataPluginFunctionalTest {
     }
 
     @Test
+    fun `pom name and description default to the project and are read late`() {
+        writeBuild(
+            """
+            publishData {
+                channels {
+                    snapshot(uri("repo/snapshots").toString())
+                }
+            }
+
+            description = "Set at the end"
+            """,
+        )
+        commit()
+        run("generatePomFileForMavenPublication", "--configuration-cache")
+        val pom = projectDir.resolve("build/publications/maven/pom-default.xml").readText()
+        assertThat(pom).contains("<name>Sample</name>", "<description>Set at the end</description>")
+    }
+
+    @Test
+    fun `pom values of the build win and an eager null description falls back to the project`() {
+        writeBuild(
+            """
+            publishing {
+                publications.create<MavenPublication>("maven") {
+                    from(components["java"])
+                    pom {
+                        name = "Custom"
+                        description = project.description
+                    }
+                }
+            }
+
+            description = "Set after the publication"
+            """,
+        )
+        commit()
+        run("generatePomFileForMavenPublication")
+        val pom = projectDir.resolve("build/publications/maven/pom-default.xml").readText()
+        assertThat(pom).contains("<name>Custom</name>", "<description>Set after the publication</description>")
+    }
+
+    @Test
+    fun `only md5 and sha1 checksums are published unless turned off`() {
+        writeBuild(
+            """
+            publishData {
+                channels {
+                    snapshot(uri("repo/snapshots").toString())
+                }
+            }
+            """,
+        )
+        commit()
+        run("publish", "--configuration-cache")
+        assertThat(checksums("repo/snapshots")).containsExactlyInAnyOrder("md5", "sha1")
+
+        projectDir.resolve("repo").deleteRecursively()
+        assertThat(run("publish", "--configuration-cache").output).contains("Reusing configuration cache.")
+        assertThat(checksums("repo/snapshots")).containsExactlyInAnyOrder("md5", "sha1")
+
+        writeBuild(
+            """
+            publishData {
+                onlyRequiredChecksums = false
+                channels {
+                    snapshot(uri("repo/all").toString())
+                }
+            }
+            """,
+        )
+        commit()
+        run("publish", "--configuration-cache")
+        assertThat(checksums("repo/all")).containsExactlyInAnyOrder("md5", "sha1", "sha256", "sha512")
+    }
+
+    @Test
+    fun `maven central channel publishes nothing while the pom lacks required elements`() {
+        val channels =
+            """
+            publishData {
+                channels {
+                    release(uri("repo/releases").toString()) { publishToMavenCentral() }
+                    snapshot(uri("repo/snapshots").toString())
+                }
+            }
+            """
+        writeBuild(channels)
+        commit()
+        val tag = mapOf("PUBLISHDATA_REF" to "refs/tags/v2.0.0")
+
+        val failed = runner("publish", env = tag).buildAndFail()
+        assertThat(failed.output).contains("'maven' lacks description, url, licenses, developers, scm")
+        assertThat(projectDir.resolve("repo/releases")).doesNotExist()
+
+        run("publish", env = mapOf("PUBLISHDATA_REF" to "feature/x"))
+        assertThat(projectDir.resolve("repo/snapshots/de/chojo/sample/1.5.0-SNAPSHOT")).isDirectory()
+
+        writeBuild(
+            """
+            $channels
+
+            description = "A sample"
+
+            publishing {
+                publications.withType<MavenPublication>().configureEach {
+                    pom {
+                        url = "https://example.com"
+                        licenses { license { name = "MIT" } }
+                        developers { developer { id = "dev" } }
+                        scm { url = "https://example.com/scm" }
+                    }
+                }
+            }
+            """,
+        )
+        commit()
+        val published = run("publish", "--configuration-cache", env = tag)
+        assertThat(published.task(":validatePoms")?.outcome?.name).isEqualTo("SUCCESS")
+        assertThat(projectDir.resolve("repo/releases/de/chojo/sample/2.0.0/sample-2.0.0.pom")).exists()
+    }
+
+    private fun checksums(repository: String): Set<String> =
+        projectDir
+            .resolve(repository)
+            .walk()
+            .filter { it.isFile }
+            .map { it.extension }
+            .filter { it in setOf("md5", "sha1", "sha256", "sha512") }
+            .toSet()
+
+    @Test
     fun `overriding the version in the build script is reported`() {
         writeBuild("version = \"9.9.9\"")
         commit()

@@ -7,6 +7,8 @@
 package de.chojo.publishdata
 
 import de.chojo.publishdata.git.GitContextSource
+import de.chojo.publishdata.publication.PublicationDefaults
+import de.chojo.publishdata.publication.ValidatePoms
 import de.chojo.publishdata.resolve.Resolution
 import de.chojo.publishdata.resolve.Resolver
 import org.gradle.api.GradleException
@@ -20,6 +22,11 @@ import org.gradle.api.tasks.SourceSetContainer
 /**
  * Sets the project version from the git state of the build, optionally adds a build data file to
  * the main resources, and wires `maven-publish` to the repository of the resolved channel.
+ *
+ * Every Maven publication defaults its POM name and description to the project's and writes only
+ * `.md5` and `.sha1` checksums unless [PublishDataExtension.onlyRequiredChecksums] is off. When the
+ * resolved channel goes to Maven Central, nothing is published before every POM has the elements
+ * Central requires.
  */
 class PublishDataPlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -55,6 +62,9 @@ class PublishDataPlugin : Plugin<Project> {
             registerPrintVersion(project, extension)
         }
         project.pluginManager.withPlugin("maven-publish") {
+            PublicationDefaults.addPomConventions(project)
+            PublicationDefaults.limitChecksums(project, extension.onlyRequiredChecksums)
+            PublicationDefaults.registerValidatePoms(project)
             project.afterEvaluate { configurePublishing(project, extension) }
             failPublishingWithoutVersion(project, extension)
         }
@@ -228,6 +238,12 @@ class PublishDataPlugin : Plugin<Project> {
                 if (extension.repositoryActions.isEmpty()) extension.defaultRepositoryAction?.execute(this)
                 extension.repositoryActions.forEach { it.execute(this) }
             }
+        }
+        if (resolution.mavenCentral) {
+            PublicationDefaults.requireValidPoms(
+                project,
+                project.tasks.named(PublicationDefaults.VALIDATE_POMS, ValidatePoms::class.java),
+            )
         }
         registerPublishChannel(project, extension, resolution)
     }
