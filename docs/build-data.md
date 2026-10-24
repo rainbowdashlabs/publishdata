@@ -47,5 +47,20 @@ publishData {
 - Your own entries are written after the built-in ones.
 - The task is `generateBuildData`. Its output lands in `build/generated/publishdata`.
 
+## Lyna licence placeholder
+
+```kotlin
+publishData {
+    buildData {
+        lynaLicense()
+    }
+}
+```
+
+adds `lynaLicense=%%__LYNA_LICENSE__%%`. Whoever hands the jar out replaces the placeholder with the licence key the
+jar was obtained with: Lyna when it serves the download, BuiltByBit through a custom "External license key"
+placeholder named `%%__LYNA_LICENSE__%%`. A jar nobody filled, such as a local build or one taken straight from the
+repository, keeps the placeholder as written. eldo-util reads it with `LynaLicense`.
+
 In a [multi-module build](./multi-module/convention-plugins.md) whose modules end up in one shaded jar, give the file
 a name per module. Otherwise every module writes `build.data` and only one survives.

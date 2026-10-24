@@ -47,7 +47,7 @@ Apply the plugin in `build.gradle.kts` and tell it where releases and snapshots 
 plugins {
     `java-library`
     `maven-publish`
-    id("de.chojo.publishdata") version "2.2.0"
+    id("de.chojo.publishdata") version "2.3.0"
 }
 
 publishData {
