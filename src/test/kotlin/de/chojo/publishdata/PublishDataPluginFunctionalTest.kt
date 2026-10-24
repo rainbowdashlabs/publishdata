@@ -126,6 +126,39 @@ class PublishDataPluginFunctionalTest {
     }
 
     @Test
+    fun `build data carries the Lyna licence placeholder when asked`() {
+        writeBuild(
+            """
+            publishData {
+                buildData {
+                    lynaLicense()
+                }
+            }
+            """,
+        )
+        commit()
+        run("processResources")
+        val data = projectDir.resolve("build/resources/main/build.data")
+        assertThat(data.readLines()).contains("lynaLicense=%%__LYNA_LICENSE__%%")
+    }
+
+    @Test
+    fun `build data leaves the Lyna licence placeholder out unless asked`() {
+        writeBuild(
+            """
+            publishData {
+                buildData()
+            }
+            """,
+        )
+        commit()
+        run("processResources")
+        assertThat(projectDir.resolve("build/resources/main/build.data").readLines()).noneMatch {
+            it.startsWith("lynaLicense=")
+        }
+    }
+
+    @Test
     fun `build data without time is reproducible and cacheable`() {
         writeBuild(
             """

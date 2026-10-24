@@ -40,4 +40,19 @@ abstract class BuildDataSpec {
         key: String,
         value: Provider<String>,
     ) = entries.put(key, value)
+
+    /**
+     * Adds `lynaLicense` holding [LYNA_LICENSE_PLACEHOLDER], which whoever hands the jar out replaces
+     * with the licence key it was obtained with: Lyna when it serves the download, BuiltByBit through a
+     * custom placeholder of the same name. A jar nobody filled keeps the placeholder as written.
+     */
+    fun lynaLicense() = entries.put(LYNA_LICENSE, LYNA_LICENSE_PLACEHOLDER)
+
+    companion object {
+        /** The build data key [lynaLicense] writes. */
+        const val LYNA_LICENSE = "lynaLicense"
+
+        /** The text standing in for the licence key until the jar is handed out. */
+        const val LYNA_LICENSE_PLACEHOLDER = "%%__LYNA_LICENSE__%%"
+    }
 }
