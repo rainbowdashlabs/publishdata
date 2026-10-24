@@ -13,7 +13,7 @@ Apply and configure that plugin as usual. PublishData sets the version and route
 plugins {
     `java-library`
     id("com.vanniktech.maven.publish") version "0.37.0"
-    id("de.chojo.publishdata") version "2.1.0"
+    id("de.chojo.publishdata") version "2.2.0"
 }
 
 mavenPublishing {

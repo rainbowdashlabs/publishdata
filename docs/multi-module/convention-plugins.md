@@ -21,7 +21,7 @@ repositories {
 }
 
 dependencies {
-    implementation("de.chojo:publishdata:2.1.0")
+    implementation("de.chojo:publishdata:2.2.0")
 }
 ```
 

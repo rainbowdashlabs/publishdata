@@ -30,7 +30,7 @@ pluginManagement {
 plugins {
     `java-library`
     `maven-publish`
-    id("de.chojo.publishdata") version "2.1.0"
+    id("de.chojo.publishdata") version "2.2.0"
 }
 
 publishData {

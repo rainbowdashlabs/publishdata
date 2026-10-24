@@ -13,8 +13,8 @@ A download site can read what a build needs without opening the jar.
 plugins {
     java
     `maven-publish`
-    id("de.chojo.publishdata") version "2.1.0"
-    id("de.chojo.publishdata.manifest") version "2.1.0"
+    id("de.chojo.publishdata") version "2.2.0"
+    id("de.chojo.publishdata.manifest") version "2.2.0"
 }
 
 pluginManifest {
@@ -69,7 +69,7 @@ part of the processed resources. `bukkit { }` and `paper { }` give the name, `ap
 ```kotlin
 plugins {
     id("de.eldoria.plugin-yml.paper") version "0.9.0"
-    id("de.chojo.publishdata.manifest") version "2.1.0"
+    id("de.chojo.publishdata.manifest") version "2.2.0"
 }
 
 paper {
