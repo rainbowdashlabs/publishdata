@@ -12,7 +12,7 @@ script runs.
 
 ```kotlin
 plugins {
-    id("de.chojo.publishdata.settings") version "2.1.0"
+    id("de.chojo.publishdata.settings") version "2.2.0"
 }
 
 rootProject.name = "myproject"
