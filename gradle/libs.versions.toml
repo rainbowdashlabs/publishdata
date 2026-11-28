@@ -1,6 +1,6 @@
 [versions]
-publishdata = "2.1.0"
-spotless = "8.10.4"
+publishdata = "2.3.0"
+spotless = "8.12.0"
 ktlint = "1.8.0"
 snakeyaml = "2.7"
 junit = "6.1.3"
